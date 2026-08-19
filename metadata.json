@@ -1,0 +1,7 @@
+{
+  "name": "Digibouquet",
+  "description": "A digital flower-gifting and interactive bouquet-building experience inspired by Digibouquet.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

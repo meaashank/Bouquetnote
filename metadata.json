@@ -1,6 +1,6 @@
 {
   "name": "Digibouquet",
-  "description": "A digital flower-gifting and interactive bouquet-building experience inspired by Digibouquet.",
+  "description": "An interactive digital flower-gifting atelier featuring botanical bouquet composition, customizable inscribed ribbons, ambient soundscapes, PNG exports, and a searchable digital garden.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

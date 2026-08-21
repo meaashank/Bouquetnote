@@ -4,6 +4,7 @@ import { Navbar } from './components/Navbar';
 import { Home } from './components/Home';
 import { BouquetBuilder } from './components/BouquetBuilder';
 import { Garden } from './components/Garden';
+import { motion, AnimatePresence } from 'motion/react';
 
 const INITIAL_BOUQUET: Bouquet = {
   id: 'sample-bouquet-1',
@@ -14,8 +15,12 @@ const INITIAL_BOUQUET: Bouquet = {
     { instanceId: 's3', flowerId: 'eucalyptus-silver', x: 30, y: 50, rotation: -20, scale: 1.0, zIndex: 3 },
     { instanceId: 's4', flowerId: 'eucalyptus-silver', x: 70, y: 50, rotation: 20, scale: 1.0, zIndex: 4 },
   ],
+  stickers: [
+    { instanceId: 'stk-1', stickerId: 'butterfly-gold', x: 66, y: 24, rotation: 12, scale: 0.95, zIndex: 50 },
+    { instanceId: 'stk-2', stickerId: 'pollen-sparkle', x: 44, y: 38, rotation: 0, scale: 0.85, zIndex: 51 }
+  ],
   wrapping: 'kraft',
-  ribbon: 'ivory-silk',
+  ribbon: 'raw-silk',
   recipientName: 'Eleanor',
   senderName: 'Julian',
   note: 'May your days bloom with quiet joy and gentle light, just like these spring stems.',
@@ -53,35 +58,64 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF7] text-[#2C2A29] font-sans selection:bg-[#EFECE4]">
+    <div className="min-h-screen bg-[#F9F9ED] text-[#111111] font-sans selection:bg-[#EFECE4] overflow-x-hidden">
       <Navbar 
         currentView={currentView} 
         setCurrentView={setCurrentView} 
         gardenCount={bouquets.length} 
       />
 
-      <main>
-        {currentView === 'home' && (
-          <Home 
-            setCurrentView={setCurrentView} 
-            gardenCount={bouquets.length} 
-          />
-        )}
+      <main className="relative w-full overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          {currentView === 'home' && (
+            <motion.div
+              key="home"
+              initial={{ opacity: 0, y: 8, filter: 'blur(3px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -8, filter: 'blur(3px)' }}
+              transition={{ duration: 0.26, ease: [0.25, 1, 0.5, 1] }}
+              className="w-full"
+            >
+              <Home 
+                setCurrentView={setCurrentView} 
+                gardenCount={bouquets.length} 
+              />
+            </motion.div>
+          )}
 
-        {currentView === 'builder' && (
-          <BouquetBuilder 
-            onSaveBouquet={handleSaveBouquet} 
-            setCurrentView={setCurrentView} 
-          />
-        )}
+          {currentView === 'builder' && (
+            <motion.div
+              key="builder"
+              initial={{ opacity: 0, y: 8, filter: 'blur(3px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -8, filter: 'blur(3px)' }}
+              transition={{ duration: 0.26, ease: [0.25, 1, 0.5, 1] }}
+              className="w-full"
+            >
+              <BouquetBuilder 
+                onSaveBouquet={handleSaveBouquet} 
+                setCurrentView={setCurrentView} 
+              />
+            </motion.div>
+          )}
 
-        {currentView === 'garden' && (
-          <Garden 
-            bouquets={bouquets} 
-            setCurrentView={setCurrentView} 
-            onDeleteBouquet={handleDeleteBouquet} 
-          />
-        )}
+          {currentView === 'garden' && (
+            <motion.div
+              key="garden"
+              initial={{ opacity: 0, y: 8, filter: 'blur(3px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -8, filter: 'blur(3px)' }}
+              transition={{ duration: 0.26, ease: [0.25, 1, 0.5, 1] }}
+              className="w-full"
+            >
+              <Garden 
+                bouquets={bouquets} 
+                setCurrentView={setCurrentView} 
+                onDeleteBouquet={handleDeleteBouquet} 
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

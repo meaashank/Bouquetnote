@@ -144,9 +144,57 @@ export const WRAPPING_OPTIONS = [
 ];
 
 export const RIBBON_OPTIONS = [
-  { id: 'ivory-silk', name: 'Ivory Silk Ribbon', color: '#F7F4EF', border: '#E0D8CC' },
-  { id: 'burgundy-velvet', name: 'Burgundy Velvet', color: '#4A1525', border: '#300D18' },
-  { id: 'sage-chiffon', name: 'Sage Chiffon', color: '#9CAF88', border: '#7A9164' },
-  { id: 'black-satin', name: 'Black Satin', color: '#1A1A1A', border: '#000000' },
-  { id: 'raw-linen', name: 'Raw Hemp Twine', color: '#C2B295', border: '#A39274' }
+  { id: 'raw-silk', name: 'Raw Silk Drape', material: 'Raw Silk', color: '#F7F4EF', border: '#E0D8CC', desc: 'Soft luminous ivory silk with organic flowing tails' },
+  { id: 'jute-twine', name: 'Rustic Jute Twine', material: 'Jute', color: '#BFAF95', border: '#8E7E65', desc: 'Earthy hand-knotted natural fiber twine with frayed ends' },
+  { id: 'burgundy-velvet', name: 'Burgundy Velvet', material: 'Velvet', color: '#4E1222', border: '#320A14', desc: 'Opulent deep crimson plush velvet bow' },
+  { id: 'blush-velvet', name: 'Blush Rose Velvet', material: 'Velvet', color: '#B76E79', border: '#8C4B54', desc: 'Plush dusty rose velvet with gentle drape' },
+  { id: 'sage-chiffon', name: 'Botanical Sage Chiffon', material: 'Chiffon', color: '#9CAF88', border: '#7A9164', desc: 'Sheer airy botanical green ribbon with fluttering drape' },
+  { id: 'black-satin', name: 'Noir Satin', material: 'Satin', color: '#1A1A1A', border: '#000000', desc: 'Tailored lustrous black satin with crisp cut tails' }
 ];
+
+export const RIBBON_TEXTURES = [
+  { id: 'silk', name: 'Raw Silk', desc: 'Luminous organic drape with soft folds', badge: 'Fluid' },
+  { id: 'velvet', name: 'Plush Velvet', desc: 'Opulent deep pile with rich tactile shadows', badge: 'Rich' },
+  { id: 'chiffon', name: 'Airy Chiffon', desc: 'Translucent sheer weave with fluttering tails', badge: 'Sheer' },
+  { id: 'satin', name: 'Gloss Satin', desc: 'Tailored luster with sharp pressed edges', badge: 'Lustrous' },
+  { id: 'jute', name: 'Rustic Jute', desc: 'Earthy natural fiber twine with artisanal texture', badge: 'Raw' },
+  { id: 'grosgrain', name: 'Ribbed Grosgrain', desc: 'Structured matte cross-grain weave', badge: 'Textured' },
+  { id: 'metallic', name: 'Gold Lurex', desc: 'Shimmering fine metallic thread accents', badge: 'Gilded' },
+] as const;
+
+export const RIBBON_COLORS = [
+  { id: 'ivory', name: 'Ivory Cream', hex: '#F7F4EF', borderHex: '#DCD5C6', defaultTextColor: '#3D352E' },
+  { id: 'champagne', name: 'Champagne Sand', hex: '#E8DDCB', borderHex: '#C2B59F', defaultTextColor: '#42382D' },
+  { id: 'blush', name: 'Blush Mist', hex: '#F5D6D6', borderHex: '#D9A7A7', defaultTextColor: '#612933' },
+  { id: 'rose', name: 'Dusty Rose', hex: '#B76E79', borderHex: '#8C4B54', defaultTextColor: '#FFFDF7' },
+  { id: 'burgundy', name: 'Burgundy Merlot', hex: '#4E1222', borderHex: '#2E0A14', defaultTextColor: '#D4AF37' },
+  { id: 'terracotta', name: 'Terracotta Rust', hex: '#C36A4D', borderHex: '#994B32', defaultTextColor: '#FFFDF7' },
+  { id: 'sage', name: 'Botanical Sage', hex: '#9CAF88', borderHex: '#738760', defaultTextColor: '#26361C' },
+  { id: 'forest', name: 'Forest Evergreen', hex: '#2D4233', borderHex: '#1B2C20', defaultTextColor: '#D4AF37' },
+  { id: 'azure', name: 'French Blue', hex: '#8DA4C4', borderHex: '#6880A3', defaultTextColor: '#172A45' },
+  { id: 'navy', name: 'Midnight Navy', hex: '#1E2C3D', borderHex: '#0F1722', defaultTextColor: '#D4AF37' },
+  { id: 'lavender', name: 'Lavender Mist', hex: '#B5A3C8', borderHex: '#8C77A1', defaultTextColor: '#2E1E3D' },
+  { id: 'gold', name: 'Antique Gold', hex: '#D4AF37', borderHex: '#A38321', defaultTextColor: '#2E2204' },
+  { id: 'espresso', name: 'Espresso Walnut', hex: '#4A3728', borderHex: '#2D2015', defaultTextColor: '#D4AF37' },
+  { id: 'noir', name: 'Noir Obsidian', hex: '#1C1C1C', borderHex: '#050505', defaultTextColor: '#D4AF37' }
+];
+
+export const RIBBON_TEXT_COLORS = [
+  { id: 'gold-foil', name: 'Gold Foil', hex: '#D4AF37', bg: 'bg-[#D4AF37]', border: '#A38321' },
+  { id: 'midnight-ink', name: 'Midnight Ink', hex: '#1A1A1A', bg: 'bg-[#1A1A1A]', border: '#000000' },
+  { id: 'ivory-stitch', name: 'Ivory Thread', hex: '#FFFDF7', bg: 'bg-[#FFFDF7]', border: '#DCD5C6' },
+  { id: 'rose-gold', name: 'Rose Gold', hex: '#C88A8A', bg: 'bg-[#C88A8A]', border: '#A06666' },
+  { id: 'silver-foil', name: 'Silver Foil', hex: '#D6D8DB', bg: 'bg-[#D6D8DB]', border: '#A4A8AD' },
+];
+
+export const RIBBON_TEXT_PRESETS = [
+  'With All My Love',
+  'Forever & Always',
+  'Happy Birthday',
+  'Thinking of You',
+  'In Full Bloom',
+  'With Gratitude',
+  'To Someone Special',
+  'A Moment of Serenity'
+];
+

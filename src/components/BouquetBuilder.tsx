@@ -1,14 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Flower as FlowerType, PlacedFlower, PlacedSticker, StickerId, Bouquet, WrappingStyle, RibbonStyle, RibbonTexture, AppView } from '../types';
-import { FLOWERS, WRAPPING_OPTIONS, RIBBON_OPTIONS, RIBBON_TEXTURES, RIBBON_COLORS, RIBBON_TEXT_COLORS, RIBBON_TEXT_PRESETS } from '../data/flowers';
+import { FLOWERS, MOOD_FILTERS, WRAPPING_OPTIONS, RIBBON_OPTIONS, RIBBON_TEXTURES, RIBBON_COLORS, RIBBON_TEXT_COLORS, RIBBON_TEXT_PRESETS, organizeBouquetStems } from '../data/flowers';
 import { FlowerSVG } from './FlowerSVG';
 import { RibbonSVG } from './RibbonSVG';
 import { WrappingPaperSVG } from './WrappingPaperSVG';
 import { StickerSVG, STICKERS_CATALOG } from './StickerSVG';
 import { MiniPreview } from './MiniPreview';
+import { FlowerInfoCard } from './FlowerInfoCard';
 import { 
-  Sparkles, Plus, Trash2, RefreshCcw, Check, 
-  Send, Wand2, Package, Layers, ChevronRight, X, Flower2, Undo2, ArrowUp, ArrowDown, Sliders, Download, Image as ImageIcon, Sparkle, Type, Palette, Feather, Tag, Eye
+  Sparkles, Plus, Minus, Trash2, RefreshCcw, Check, 
+  Send, Wand2, Package, Layers, ChevronRight, X, Flower2, Undo2, ArrowUp, ArrowDown, Sliders, Download, Image as ImageIcon, Sparkle, Type, Palette, Feather, Tag, Eye, Info, Calendar, Heart, Gift
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toPng } from 'html-to-image';
@@ -28,16 +29,16 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
   setCurrentView 
 }) => {
   const [placedFlowers, setPlacedFlowers] = useState<PlacedFlower[]>([
-    { instanceId: 'init-1', flowerId: 'rose-blush', x: 50, y: 34, rotation: 0, scale: 1.15, zIndex: 12 },
-    { instanceId: 'init-2', flowerId: 'peony-coral', x: 38, y: 39, rotation: -12, scale: 1.1, zIndex: 14 },
-    { instanceId: 'init-3', flowerId: 'tulip-french', x: 62, y: 39, rotation: 12, scale: 1.05, zIndex: 16 },
-    { instanceId: 'init-4', flowerId: 'eucalyptus-silver', x: 26, y: 32, rotation: -24, scale: 1.0, zIndex: 6 },
-    { instanceId: 'init-5', flowerId: 'eucalyptus-silver', x: 74, y: 32, rotation: 24, scale: 1.0, zIndex: 8 },
+    { instanceId: 'init-1', flowerId: 'rose-red', x: 50, y: 36, rotation: 0, scale: 1.15, zIndex: 22 },
+    { instanceId: 'init-2', flowerId: 'peony-coral', x: 40, y: 42, rotation: -10, scale: 1.08, zIndex: 18 },
+    { instanceId: 'init-3', flowerId: 'tulip-parisian', x: 60, y: 42, rotation: 10, scale: 1.08, zIndex: 18 },
+    { instanceId: 'init-4', flowerId: 'eucalyptus-silver', x: 28, y: 41, rotation: -22, scale: 1.0, zIndex: 6 },
+    { instanceId: 'init-5', flowerId: 'eucalyptus-silver', x: 72, y: 41, rotation: 22, scale: 1.0, zIndex: 8 },
   ]);
 
   const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([
-    { instanceId: 'init-stk-1', stickerId: 'butterfly-gold', x: 68, y: 22, rotation: 15, scale: 1.0, zIndex: 55 },
-    { instanceId: 'init-stk-2', stickerId: 'pollen-sparkle', x: 42, y: 32, rotation: 0, scale: 0.9, zIndex: 56 }
+    { instanceId: 'init-stk-1', stickerId: 'butterfly-gold', x: 66, y: 22, rotation: 15, scale: 1.0, zIndex: 55 },
+    { instanceId: 'init-stk-2', stickerId: 'pollen-sparkle', x: 44, y: 30, rotation: 0, scale: 0.9, zIndex: 56 }
   ]);
 
   const [history, setHistory] = useState<HistoryStep[]>([]);
@@ -45,6 +46,12 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
   const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
   const [visibleSquareId, setVisibleSquareId] = useState<string | null>('init-1');
   const [squareTimer, setSquareTimer] = useState<NodeJS.Timeout | null>(null);
+
+  // Meaning & Personality States
+  const [selectedMoodFilter, setSelectedMoodFilter] = useState<string>('all');
+  const [hoveredFlower, setHoveredFlower] = useState<FlowerType | null>(null);
+  const [inspectedFlower, setInspectedFlower] = useState<FlowerType | null>(null);
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const [wrapping, setWrapping] = useState<WrappingStyle>('kraft');
   const [ribbon, setRibbon] = useState<RibbonStyle>('raw-silk');
@@ -139,22 +146,53 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
     }
   };
 
+  const handleOrganizeBouquet = () => {
+    pushHistory();
+    setPlacedFlowers(prev => organizeBouquetStems(prev));
+  };
+
   const handleAddFlower = (flower: FlowerType) => {
     pushHistory();
-    const randomOffsetX = (Math.random() - 0.5) * 22;
-    const randomOffsetY = (Math.random() - 0.5) * 16;
-    const randomRotation = Math.floor((Math.random() - 0.5) * 30);
+    const count = placedFlowers.length;
+    // Smart bouquet fan slot placement so new flowers naturally land in harmonious positions
+    const isFoliage = flower.id === 'eucalyptus-silver' || flower.id === 'lavender-french';
+    const angleSlots = [
+      { x: 50, y: 36, rot: 0 },
+      { x: 40, y: 42, rot: -10 },
+      { x: 60, y: 42, rot: 10 },
+      { x: 50, y: 47, rot: 2 },
+      { x: 32, y: 45, rot: -20 },
+      { x: 68, y: 45, rot: 20 },
+      { x: 44, y: 34, rot: -6 },
+      { x: 56, y: 34, rot: 6 },
+      { x: 28, y: 47, rot: -26 },
+      { x: 72, y: 47, rot: 26 },
+    ];
+    
+    let defaultPos = angleSlots[count % angleSlots.length];
+    if (isFoliage) {
+      const foliageCount = placedFlowers.filter(f => f.flowerId === 'eucalyptus-silver' || f.flowerId === 'lavender-french').length;
+      const isLeft = foliageCount % 2 === 0;
+      defaultPos = {
+        x: isLeft ? 28 : 72,
+        y: 41,
+        rot: isLeft ? -22 : 22
+      };
+    }
+
+    const randomOffsetX = (Math.random() - 0.5) * 6;
+    const randomOffsetY = (Math.random() - 0.5) * 4;
     const instanceId = `flower-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     const maxZ = placedFlowers.length > 0 ? Math.max(...placedFlowers.map(f => f.zIndex)) : 10;
 
     const newFlower: PlacedFlower = {
       instanceId,
       flowerId: flower.id,
-      x: 50 + randomOffsetX,
-      y: 36 + randomOffsetY,
-      rotation: randomRotation,
+      x: defaultPos.x + randomOffsetX,
+      y: defaultPos.y + randomOffsetY,
+      rotation: defaultPos.rot,
       scale: flower.defaultScale || 1.0,
-      zIndex: maxZ + 1,
+      zIndex: isFoliage ? 6 : maxZ + 1,
     };
 
     setPlacedFlowers(prev => [...prev, newFlower]);
@@ -163,9 +201,9 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
 
   const handleAddSticker = (stickerId: StickerId) => {
     pushHistory();
-    const randomOffsetX = (Math.random() - 0.5) * 26;
-    const randomOffsetY = (Math.random() - 0.5) * 20;
-    const randomRotation = Math.floor((Math.random() - 0.5) * 36);
+    const randomOffsetX = (Math.random() - 0.5) * 20;
+    const randomOffsetY = (Math.random() - 0.5) * 12;
+    const randomRotation = Math.floor((Math.random() - 0.5) * 24);
     const instanceId = `sticker-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     const maxZ = placedStickers.length > 0 ? Math.max(...placedStickers.map(s => s.zIndex)) : 55;
 
@@ -173,7 +211,7 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
       instanceId,
       stickerId,
       x: 50 + randomOffsetX,
-      y: 30 + randomOffsetY,
+      y: 24 + randomOffsetY,
       rotation: randomRotation,
       scale: 1.0,
       zIndex: maxZ + 1,
@@ -190,6 +228,13 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
       setSelectedInstanceId(null);
       setVisibleSquareId(null);
     }
+  };
+
+  const handleRemoveFlowerByType = (flower: FlowerType) => {
+    const instances = placedFlowers.filter(f => f.flowerId === flower.id);
+    if (instances.length === 0) return;
+    const lastInstance = instances[instances.length - 1];
+    handleRemoveFlower(lastInstance.instanceId);
   };
 
   const handleRemoveSticker = (instanceId: string) => {
@@ -224,14 +269,14 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
     setVisibleSquareId(null);
   };
 
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!dragTarget || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
+  const handleCanvasPointerMove = (clientX: number, clientY: number) => {
+    if (!dragTarget || !artboardRef.current) return;
+    const rect = artboardRef.current.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
 
-    const clampedX = Math.max(10, Math.min(90, x));
-    const clampedY = Math.max(8, Math.min(88, y));
+    const clampedX = Math.max(12, Math.min(88, x));
+    const clampedY = Math.max(12, Math.min(82, y));
 
     if (dragTarget.type === 'flower') {
       setPlacedFlowers(prev => prev.map(f => 
@@ -241,6 +286,16 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
       setPlacedStickers(prev => prev.map(s => 
         s.instanceId === dragTarget.id ? { ...s, x: clampedX, y: clampedY } : s
       ));
+    }
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    handleCanvasPointerMove(e.clientX, e.clientY);
+  };
+
+  const handleCanvasTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length > 0) {
+      handleCanvasPointerMove(e.touches[0].clientX, e.touches[0].clientY);
     }
   };
 
@@ -389,46 +444,176 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
 
         {/* Tab 1: Botanical Flowers */}
         {activeTab === 'flowers' && (
-          <div className="mb-6">
-            <h2 className="text-[10px] uppercase tracking-[0.15em] font-sans font-semibold mb-3 text-[#85857D]">
-              Botanical Stems ({FLOWERS.length})
-            </h2>
-            <div className="grid grid-cols-2 gap-2.5">
-              {FLOWERS.map((flower) => {
-                const count = placedFlowers.filter(pf => pf.flowerId === flower.id).length;
+          <div className="mb-6 space-y-4 font-sans">
+            {/* Choose by Meaning Header & Filter */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <span className="text-[8px] uppercase tracking-[0.2em] font-mono text-[#85857D] block">
+                    Floriography Filter
+                  </span>
+                  <h3 className="text-[10px] uppercase tracking-[0.16em] font-semibold text-[#111111] flex items-center gap-1.5">
+                    <span>What are you trying to say?</span>
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentView('botanical-guide')}
+                  className="text-[8.5px] uppercase tracking-wider font-mono text-[#85857D] hover:text-[#111111] underline cursor-pointer"
+                >
+                  Library ↗
+                </button>
+              </div>
 
-                return (
-                  <motion.button
-                    key={flower.id}
-                    whileHover={{ scale: 1.03, y: -1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      handleAddFlower(flower);
-                      if (window.innerWidth < 768) setMobileDrawerOpen(false);
-                    }}
-                    className="aspect-[4/5] bg-[#FAFAF2] border border-[#D9D9CE] flex flex-col items-center justify-center p-2.5 cursor-pointer hover:border-[#111111] transition-all relative group text-left shadow-2xs"
-                  >
-                    {count > 0 && (
-                      <motion.div 
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute top-2 right-2 w-5 h-5 bg-[#000000] text-[#F9F9ED] rounded-full flex items-center justify-center text-[10px] font-sans font-medium shadow-xs z-20"
+              {/* Mood Filter Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
+                {MOOD_FILTERS.map((mood) => {
+                  const isSelected = selectedMoodFilter === mood.id;
+                  return (
+                    <button
+                      key={mood.id}
+                      onClick={() => setSelectedMoodFilter(mood.id)}
+                      className={`px-2.5 py-1 text-[9px] uppercase tracking-wider font-mono shrink-0 transition-all cursor-pointer flex items-center gap-1 border ${
+                        isSelected
+                          ? 'bg-[#111111] text-[#F8F7EB] border-[#111111] font-bold shadow-2xs'
+                          : 'bg-[#FAFAF2] text-[#6F6F6F] border-[#D9D9CE] hover:border-[#85857D] hover:text-[#111111]'
+                      }`}
+                      title={mood.description}
+                    >
+                      <span className="text-[10px]">{mood.emoji}</span>
+                      <span>{mood.label.replace('All 12 Flowers', 'All Stems')}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Botanical Stems Grid */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[9px] uppercase tracking-[0.15em] font-semibold text-[#85857D]">
+                  Stems ({FLOWERS.filter(f => selectedMoodFilter === 'all' || f.moods?.includes(selectedMoodFilter)).length})
+                </span>
+                <span className="text-[8.5px] text-[#85857D] italic">
+                  Hover/Tap ⓘ to inspect personality
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {FLOWERS
+                  .filter(f => selectedMoodFilter === 'all' || f.moods?.includes(selectedMoodFilter))
+                  .map((flower) => {
+                    const count = placedFlowers.filter(pf => pf.flowerId === flower.id).length;
+                    const isHovered = hoveredFlower?.id === flower.id;
+
+                    return (
+                      <div
+                        key={flower.id}
+                        onMouseEnter={() => {
+                          if (hoverTimeout) clearTimeout(hoverTimeout);
+                          setHoveredFlower(flower);
+                        }}
+                        onMouseLeave={() => {
+                          const timeout = setTimeout(() => {
+                            setHoveredFlower(null);
+                          }, 250);
+                          setHoverTimeout(timeout);
+                        }}
+                        className={`bg-[#FAFAF2] border transition-all relative flex flex-col justify-between p-2 shadow-2xs group ${
+                          isHovered ? 'border-[#111111] ring-1 ring-[#111111]/20' : 'border-[#D9D9CE] hover:border-[#85857D]'
+                        }`}
                       >
-                        {count}
-                      </motion.div>
-                    )}
-                    <div className="w-10 h-14 opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-transform">
-                      <FlowerSVG 
-                        svgType={flower.svgType} 
-                        color={flower.color} 
-                      />
-                    </div>
-                    <span className="mt-1.5 text-[9px] uppercase tracking-widest font-sans opacity-65 text-center truncate w-full text-[#111111]">
-                      {flower.name.split(' ')[0]}
-                    </span>
-                  </motion.button>
-                );
-              })}
+                        {/* Top Meta: Birth month + Info (i) button */}
+                        <div className="flex items-center justify-between w-full mb-1">
+                          {flower.birthMonth ? (
+                            <span className="text-[7.5px] uppercase font-mono px-1 py-0.2 bg-[#EAE8D8] text-[#555555] tracking-wider">
+                              {flower.birthMonth.slice(0, 3)}
+                            </span>
+                          ) : (
+                            <span className="text-[7.5px] uppercase font-mono px-1 py-0.2 text-[#85857D] tracking-wider">
+                              Stem
+                            </span>
+                          )}
+
+                          {/* Explicit Info Button (Tapping opens info without selecting/deselecting) */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInspectedFlower(flower);
+                            }}
+                            className="w-5 h-5 rounded-full bg-[#EAE8D8] hover:bg-[#111111] hover:text-[#F8F7EB] text-[#111111] flex items-center justify-center transition-colors cursor-pointer border border-[#D0CEBF]"
+                            title="Inspect Flower Meaning & Personality"
+                          >
+                            <Info className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+
+                        {/* Flower Visual Artwork */}
+                        <div 
+                          onClick={() => setInspectedFlower(flower)}
+                          className="w-full h-16 bg-transparent flex items-center justify-center p-1 cursor-pointer group-hover:scale-[1.05] transition-transform my-1 overflow-hidden"
+                        >
+                          {flower.imageUrl ? (
+                            <img 
+                              src={flower.imageUrl} 
+                              alt={flower.name} 
+                              className="w-full h-full object-contain mix-blend-multiply select-none" 
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-9 h-13">
+                              <FlowerSVG svgType={flower.svgType} color={flower.color} />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Flower Name & Meaning Snippet */}
+                        <div className="mt-1 text-center">
+                          <h4 
+                            onClick={() => setInspectedFlower(flower)}
+                            className="text-[10px] font-serif italic text-[#111111] truncate cursor-pointer group-hover:text-amber-900"
+                          >
+                            {flower.name}
+                          </h4>
+                          <p className="text-[7.5px] text-[#85857D] font-mono uppercase tracking-wider truncate">
+                            {flower.meaning.slice(0, 2).join(' · ')}
+                          </p>
+                        </div>
+
+                        {/* Distinct Action Bar: Add & Decrement Count */}
+                        <div className="mt-2 pt-1.5 border-t border-[#EAE8D8] flex items-center gap-1 w-full">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleAddFlower(flower);
+                              if (window.innerWidth < 768) setMobileDrawerOpen(false);
+                            }}
+                            className="flex-1 py-1.5 bg-[#111111] text-[#F8F7EB] text-[8.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1 hover:bg-[#222222] transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-2.5 h-2.5" />
+                            <span>Add</span>
+                            {count > 0 && <span className="text-[#E5A910]">({count})</span>}
+                          </button>
+
+                          {count > 0 && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveFlowerByType(flower);
+                              }}
+                              className="p-1.5 border border-[#D9D9CE] hover:border-red-600 hover:text-red-600 text-[#6F6F6F] bg-[#FAFAF2] transition-colors cursor-pointer"
+                              title={`Remove 1 ${flower.name}`}
+                            >
+                              <Minus className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
           </div>
         )}
@@ -500,7 +685,13 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
                       <div className="font-serif italic text-sm text-[#111111]">{w.name}</div>
                       <div className="text-[9px] text-[#6F6F6F] uppercase tracking-wider">{w.desc}</div>
                     </div>
-                    <span className={`w-5 h-5 rounded-full ${w.bg} border border-[#111111]/20 shrink-0 shadow-2xs`} />
+                    {w.id === 'none' ? (
+                      <span className="text-[10px] font-mono text-[#85857D] border border-dashed border-[#85857D]/50 px-1.5 py-0.5 rounded">
+                        None
+                      </span>
+                    ) : (
+                      <span className={`w-5 h-5 rounded-full ${w.bg} border border-[#111111]/20 shrink-0 shadow-2xs`} />
+                    )}
                   </motion.button>
                 ))}
               </div>
@@ -1009,8 +1200,8 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
       >
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
 
-        {/* Top Action Bar (Export PNG, Mobile Toggle, Info) */}
-        <div className="w-full max-w-2xl flex items-center justify-between bg-[#FAFAF2] border border-[#D9D9CE] px-4 py-2.5 mb-2 z-20 shadow-2xs">
+        {/* Top Action Bar (Auto-Arrange, Export PNG, Mobile Toggle, Info) */}
+        <div className="w-full max-w-2xl flex items-center justify-between bg-[#FAFAF2] border border-[#D9D9CE] px-3.5 py-2 mb-2 z-20 shadow-2xs">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#111111]"></span>
             <span className="text-[10px] font-sans uppercase tracking-widest font-bold text-[#111111]">
@@ -1018,30 +1209,44 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Auto-Organize Stems Button */}
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleOrganizeBouquet}
+              disabled={placedFlowers.length === 0}
+              className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-sans font-medium px-2.5 py-1.5 border transition-all cursor-pointer bg-[#F9F9ED] hover:bg-[#111111] hover:text-[#F9F9ED] text-[#111111] border-[#D9D9CE]"
+              title="Harmonize stems into an organized florist bouquet"
+            >
+              <Wand2 className="w-3 h-3 text-amber-600" />
+              <span>Auto-Arrange</span>
+            </motion.button>
+
             {/* Export PNG Button */}
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleExportPNG}
               disabled={isExportingImage || placedFlowers.length === 0}
-              className={`flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-sans font-medium px-3 py-1.5 border transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-sans font-medium px-2.5 py-1.5 border transition-all cursor-pointer ${
                 isExportingImage 
                   ? 'bg-amber-100 text-amber-900 border-amber-300' 
-                  : 'bg-[#F9F9ED] hover:bg-[#111111] hover:text-[#F9F9ED] text-[#111111] border-[#D9D9CE]'
+                  : 'bg-[#111111] text-[#F9F9ED] border-[#111111] hover:bg-[#222222]'
               }`}
               title="Save high-resolution PNG image of your bouquet"
             >
               <Download className="w-3 h-3" />
-              <span>{isExportingImage ? 'Exporting...' : 'Export PNG'}</span>
+              <span className="hidden xs:inline">{isExportingImage ? 'Exporting...' : 'Export PNG'}</span>
+              <span className="xs:hidden">PNG</span>
             </motion.button>
 
             {/* Mobile Drawer Toggle */}
             <button
               onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
-              className="flex md:hidden text-[9px] uppercase tracking-widest font-sans font-medium px-3 py-1.5 bg-[#111111] text-[#F9F9ED] active:scale-95 cursor-pointer items-center gap-1"
+              className="flex md:hidden text-[9px] uppercase tracking-widest font-sans font-medium px-2.5 py-1.5 bg-[#FAFAF2] border border-[#111111] text-[#111111] active:scale-95 cursor-pointer items-center gap-1"
             >
-              <span>{mobileDrawerOpen ? 'Close' : 'Atelier Menu'}</span>
+              <span>{mobileDrawerOpen ? 'Close' : 'Menu'}</span>
               <ChevronRight className={`w-3 h-3 transition-transform ${mobileDrawerOpen ? 'rotate-90' : ''}`} />
             </button>
           </div>
@@ -1067,11 +1272,20 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
         {/* Bouquet Composition Artboard Canvas (Target for PNG export) */}
         <div 
           ref={artboardRef}
-          className="relative w-full max-w-[460px] h-[400px] sm:h-[490px] md:h-[530px] flex items-center justify-center my-auto bg-[#F9F9ED] rounded-xl"
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={() => setDragTarget(null)}
+          onTouchMove={handleCanvasTouchMove}
+          onTouchEnd={() => setDragTarget(null)}
+          className="relative w-full max-w-[380px] sm:max-w-[420px] aspect-[4/5] flex items-center justify-center my-auto bg-[#F9F9ED] rounded-xl overflow-hidden shadow-2xs select-none touch-none"
         >
-          
+          {/* Subtle Background Artboard Watermark Pattern */}
+          <div 
+            className="absolute inset-0 opacity-[0.03] pointer-events-none" 
+            style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }}
+          />
+
           {/* 1. Background Origami Parchment Wings (Back Layer, z-0) */}
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-56 sm:w-68 h-52 sm:h-64 pointer-events-none z-0 filter drop-shadow-sm opacity-90">
+          <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 w-[74%] h-[64%] pointer-events-none z-0 filter drop-shadow-sm opacity-90">
             <WrappingPaperSVG styleId={wrapping} layer="back" className="w-full h-full" />
           </div>
 
@@ -1100,9 +1314,14 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
                     className="pointer-events-none"
                   >
                     <motion.div 
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
                       onMouseDown={(e) => {
+                        e.stopPropagation();
+                        handleSelectFlower(pf.instanceId);
+                        setDragTarget({ type: 'flower', id: pf.instanceId });
+                      }}
+                      onTouchStart={(e) => {
                         e.stopPropagation();
                         handleSelectFlower(pf.instanceId);
                         setDragTarget({ type: 'flower', id: pf.instanceId });
@@ -1111,10 +1330,10 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
                         e.stopPropagation();
                         handleSelectFlower(pf.instanceId);
                       }}
-                      className={`w-24 h-32 sm:w-28 sm:h-36 relative cursor-grab active:cursor-grabbing pointer-events-auto transition-all ${
+                      className={`w-28 h-36 sm:w-32 sm:h-40 relative cursor-grab active:cursor-grabbing pointer-events-auto transition-all ${
                         isShowSquare ? 'ring-1 ring-[#111111]/60 bg-[#111111]/5 rounded-xl' : ''
                       }`}
-                      title="Click to select & drag flower"
+                      title="Click or drag to position stem"
                     >
                       {isShowSquare && (
                         <motion.button
@@ -1144,14 +1363,14 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
           </div>
 
           {/* 3. Front Tapered Wrapping Cone (z-45) & 4. Botanical Ribbon (z-50) */}
-          <div className="absolute bottom-1 left-1/2 -translate-x-1/2 z-45 flex flex-col items-center pointer-events-none">
+          <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 z-45 flex flex-col items-center pointer-events-none w-[58%] h-[48%]">
             {/* Front Tapered Origami Wrap Cone */}
             <motion.div 
               key={`wrap-${wrapping}`}
               initial={{ scale: 0.96, opacity: 0.9 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className="w-44 sm:w-54 h-32 sm:h-40 relative"
+              className="w-full h-full relative"
             >
               <WrappingPaperSVG styleId={wrapping} layer="front" className="w-full h-full" />
             </motion.div>
@@ -1162,7 +1381,7 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
               initial={{ scale: 0.85, opacity: 0, y: -4 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 400, damping: 22 }}
-              className="absolute -top-5 left-1/2 -translate-x-1/2 w-28 sm:w-34 h-22 pointer-events-auto z-50 filter drop-shadow-md cursor-pointer"
+              className="absolute top-[26%] left-1/2 -translate-x-1/2 w-[52%] h-[32%] pointer-events-auto z-50 filter drop-shadow-md cursor-pointer"
               onClick={() => setActiveTab('ribbons')}
               title={`Tied with ${currentTextureObj.name} ribbon • "${ribbonText || 'Click to personalize ribbon'}"`}
             >
@@ -1207,6 +1426,11 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
                         handleSelectSticker(ps.instanceId);
                         setDragTarget({ type: 'sticker', id: ps.instanceId });
                       }}
+                      onTouchStart={(e) => {
+                        e.stopPropagation();
+                        handleSelectSticker(ps.instanceId);
+                        setDragTarget({ type: 'sticker', id: ps.instanceId });
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleSelectSticker(ps.instanceId);
@@ -1227,10 +1451,10 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
                           className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-[#000000] text-[#F9F9ED] rounded-full flex items-center justify-center text-xs shadow-md z-50 hover:scale-110 transition-transform cursor-pointer pointer-events-auto"
                           title="Remove sticker"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-3.5 h-3.5" />
                         </motion.button>
                       )}
-                      <div className="w-full h-full pointer-events-auto">
+                      <div className="absolute inset-0 pointer-events-auto">
                         <StickerSVG stickerId={ps.stickerId} />
                       </div>
                     </motion.div>
@@ -1291,6 +1515,84 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
         </div>
 
       </main>
+
+      {/* Floating Desktop Hover Card (shows on hover for quick floriography glimpse) */}
+      <AnimatePresence>
+        {hoveredFlower && !inspectedFlower && activeTab === 'flowers' && (
+          <motion.div
+            initial={{ opacity: 0, x: -10, y: 10 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.15 }}
+            className="hidden lg:block fixed z-40 bottom-6 left-[340px] max-w-xs w-full pointer-events-none"
+          >
+            <div className="bg-[#FAFAF2] border border-[#111111] p-3.5 shadow-lg text-[#111111] font-sans">
+              <div className="flex items-center justify-between border-b border-[#D9D9CE] pb-2 mb-2">
+                <div>
+                  <span className="text-[8px] uppercase tracking-widest font-mono text-[#85857D]">
+                    {hoveredFlower.birthMonth ? `Birth Month: ${hoveredFlower.birthMonth}` : 'Botanical Stem'}
+                  </span>
+                  <h4 className="font-serif italic text-base text-[#111111] leading-tight">
+                    {hoveredFlower.name}
+                  </h4>
+                </div>
+                <div className="w-10 h-12 bg-transparent p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                  {hoveredFlower.imageUrl ? (
+                    <img 
+                      src={hoveredFlower.imageUrl} 
+                      alt={hoveredFlower.name} 
+                      className="w-full h-full object-contain mix-blend-multiply select-none" 
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <FlowerSVG svgType={hoveredFlower.svgType} color={hoveredFlower.color} />
+                  )}
+                </div>
+              </div>
+
+              <div className="text-[10px] space-y-1.5 text-[#444444]">
+                <div>
+                  <span className="font-semibold text-[#111111]">Symbolizes: </span>
+                  <span className="italic">{hoveredFlower.symbolism}</span>
+                </div>
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {hoveredFlower.bestFor.slice(0, 3).map((item, idx) => (
+                    <span key={idx} className="px-1.5 py-0.2 bg-[#EAE8D8] text-[8px] uppercase tracking-wider font-mono text-[#222222]">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[9.5px] italic text-[#666666] pt-1 border-t border-[#D9D9CE]/60 line-clamp-2">
+                  "{hoveredFlower.whyChoose}"
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Inspected Flower Full Personality Modal (Tapped / Clicked) */}
+      <AnimatePresence>
+        {inspectedFlower && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="max-w-md w-full"
+            >
+              <FlowerInfoCard
+                flower={inspectedFlower}
+                placedCount={placedFlowers.filter(pf => pf.flowerId === inspectedFlower.id).length}
+                onAddFlower={(flower) => handleAddFlower(flower)}
+                onRemoveFlower={(flower) => handleRemoveFlowerByType(flower)}
+                onClose={() => setInspectedFlower(null)}
+                isModal={true}
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

@@ -4,13 +4,14 @@ import { Navbar } from './components/Navbar';
 import { Home } from './components/Home';
 import { BouquetBuilder } from './components/BouquetBuilder';
 import { Garden } from './components/Garden';
+import { BotanicalGuide } from './components/BotanicalGuide';
 import { motion, AnimatePresence } from 'motion/react';
 
 const INITIAL_BOUQUET: Bouquet = {
   id: 'sample-bouquet-1',
   title: 'Spring Serenade',
   flowers: [
-    { instanceId: 's1', flowerId: 'rose-blush', x: 50, y: 35, rotation: 0, scale: 1.1, zIndex: 1 },
+    { instanceId: 's1', flowerId: 'rose-red', x: 50, y: 35, rotation: 0, scale: 1.1, zIndex: 1 },
     { instanceId: 's2', flowerId: 'peony-coral', x: 40, y: 45, rotation: -10, scale: 1.2, zIndex: 2 },
     { instanceId: 's3', flowerId: 'eucalyptus-silver', x: 30, y: 50, rotation: -20, scale: 1.0, zIndex: 3 },
     { instanceId: 's4', flowerId: 'eucalyptus-silver', x: 70, y: 50, rotation: 20, scale: 1.0, zIndex: 4 },
@@ -58,7 +59,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F9F9ED] text-[#111111] font-sans selection:bg-[#EFECE4] overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8F7EB] text-[#111111] font-sans selection:bg-[#EAE8D8] overflow-x-hidden">
       <Navbar 
         currentView={currentView} 
         setCurrentView={setCurrentView} 
@@ -112,6 +113,21 @@ export default function App() {
                 bouquets={bouquets} 
                 setCurrentView={setCurrentView} 
                 onDeleteBouquet={handleDeleteBouquet} 
+              />
+            </motion.div>
+          )}
+
+          {currentView === 'botanical-guide' && (
+            <motion.div
+              key="botanical-guide"
+              initial={{ opacity: 0, y: 8, filter: 'blur(3px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -8, filter: 'blur(3px)' }}
+              transition={{ duration: 0.26, ease: [0.25, 1, 0.5, 1] }}
+              className="w-full"
+            >
+              <BotanicalGuide 
+                setCurrentView={setCurrentView} 
               />
             </motion.div>
           )}

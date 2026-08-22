@@ -1,15 +1,50 @@
 export type FlowerCategory = 'primary' | 'secondary' | 'accent' | 'filler' | 'foliage';
 
+export type FlowerSvgType = 
+  | 'rose' 
+  | 'peony' 
+  | 'daisy' 
+  | 'lily' 
+  | 'ranunculus' 
+  | 'zinnia' 
+  | 'carnation' 
+  | 'dahlia' 
+  | 'anemone' 
+  | 'tulip' 
+  | 'orchid' 
+  | 'sunflower' 
+  | 'eucalyptus' 
+  | 'lavender' 
+  | 'hydrangea' 
+  | 'mimosa' 
+  | 'babysbreath';
+
+export interface FlowerColorMeaning {
+  color: string;
+  meaning: string;
+}
+
 export interface Flower {
   id: string;
   name: string;
   botanicalName: string;
   category: FlowerCategory;
   color: string;
-  svgType: 'rose' | 'peony' | 'ranunculus' | 'tulip' | 'eucalyptus' | 'lavender' | 'hydrangea' | 'daisy' | 'mimosa' | 'anemone' | 'babysbreath' | 'orchid';
+  svgType: FlowerSvgType;
   defaultScale: number;
   description: string;
   price: number;
+  
+  // Botanical Personality & Gifting Context
+  meaning: string[];
+  birthMonth?: string;
+  symbolism: string;
+  bestFor: string[];
+  moods: string[];
+  colors: string[];
+  whyChoose: string;
+  colorMeanings?: FlowerColorMeaning[];
+  imageUrl?: string;
 }
 
 export interface PlacedFlower {
@@ -42,7 +77,7 @@ export interface PlacedSticker {
   zIndex: number;
 }
 
-export type WrappingStyle = 'kraft' | 'silk-white' | 'sage-linen' | 'noir-velvet' | 'newspaper';
+export type WrappingStyle = 'none' | 'kraft' | 'silk-white' | 'sage-linen' | 'noir-velvet' | 'newspaper';
 export type RibbonStyle = 'ivory-silk' | 'raw-silk' | 'burgundy-velvet' | 'blush-velvet' | 'sage-chiffon' | 'black-satin' | 'raw-linen' | 'jute-twine';
 export type RibbonTexture = 'silk' | 'velvet' | 'chiffon' | 'satin' | 'jute' | 'grosgrain' | 'metallic';
 
@@ -79,4 +114,4 @@ export interface Bouquet {
   themeColor?: string;
 }
 
-export type AppView = 'home' | 'builder' | 'garden' | 'view-bouquet';
+export type AppView = 'home' | 'builder' | 'garden' | 'view-bouquet' | 'botanical-guide';

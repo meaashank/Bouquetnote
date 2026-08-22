@@ -141,17 +141,17 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
               ) : (
                 /* Miniature Composition Scale Frame */
                 <div 
-                  className={`relative flex items-center justify-center transition-transform ${
-                    isLargeSize ? 'w-48 h-48 scale-90' : 'w-36 h-36 scale-75'
+                  className={`relative flex items-center justify-center aspect-[4/5] mx-auto transition-transform ${
+                    isLargeSize ? 'w-48 h-60' : 'w-36 h-45'
                   }`}
                 >
                   {/* 1. Back Wrapping Wings */}
-                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-36 h-32 pointer-events-none z-0 opacity-90">
+                  <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 w-[74%] h-[64%] pointer-events-none z-0 opacity-90">
                     <WrappingPaperSVG styleId={wrapping} layer="back" className="w-full h-full" />
                   </div>
 
                   {/* 2. Placed Stems (Synchronized Clean Render) */}
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 scale-90">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                     {placedFlowers.map((pf) => {
                       const flowerDef = FLOWERS.find(f => f.id === pf.flowerId) || FLOWERS[0];
                       return (
@@ -161,11 +161,11 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
                             position: 'absolute',
                             left: `${pf.x}%`,
                             top: `${pf.y}%`,
-                            transform: `translate(-50%, -50%) rotate(${pf.rotation}deg) scale(${pf.scale * 0.75})`,
+                            transform: `translate(-50%, -50%) rotate(${pf.rotation}deg) scale(${pf.scale * 0.72})`,
                             zIndex: pf.zIndex
                           }}
                         >
-                          <div className="w-20 h-24">
+                          <div className="w-20 h-26">
                             <FlowerSVG 
                               svgType={flowerDef.svgType} 
                               color={flowerDef.color} 
@@ -176,26 +176,27 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
                     })}
                   </div>
 
-                  {/* 3. Front Wrapping Cone */}
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-28 h-22 pointer-events-none z-20">
-                    <WrappingPaperSVG styleId={wrapping} layer="front" className="w-full h-full" />
-                  </div>
+                  {/* 3. Front Wrapping Cone & 4. Personalized Botanical Ribbon */}
+                  <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none w-[58%] h-[48%]">
+                    <div className="w-full h-full relative">
+                      <WrappingPaperSVG styleId={wrapping} layer="front" className="w-full h-full" />
+                    </div>
 
-                  {/* 4. Personalized Botanical Ribbon */}
-                  <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-20 h-14 pointer-events-none z-30 filter drop-shadow-xs">
-                    <RibbonSVG 
-                      styleId={ribbon} 
-                      color={ribbonColor}
-                      texture={ribbonTexture}
-                      customText={ribbonText}
-                      textColor={ribbonTextColor}
-                      className="w-full h-full" 
-                    />
+                    <div className="absolute top-[26%] left-1/2 -translate-x-1/2 w-[52%] h-[32%] pointer-events-none z-30 filter drop-shadow-xs">
+                      <RibbonSVG 
+                        styleId={ribbon} 
+                        color={ribbonColor}
+                        texture={ribbonTexture}
+                        customText={ribbonText}
+                        textColor={ribbonTextColor}
+                        className="w-full h-full" 
+                      />
+                    </div>
                   </div>
 
                   {/* 5. Placed Stickers Overlay */}
                   {placedStickers.length > 0 && (
-                    <div className="absolute inset-0 pointer-events-none z-35 scale-90">
+                    <div className="absolute inset-0 pointer-events-none z-35">
                       {placedStickers.map((ps) => (
                         <div
                           key={`mini-stk-${ps.instanceId}`}
@@ -203,7 +204,7 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
                             position: 'absolute',
                             left: `${ps.x}%`,
                             top: `${ps.y}%`,
-                            transform: `translate(-50%, -50%) rotate(${ps.rotation}deg) scale(${ps.scale * 0.75})`,
+                            transform: `translate(-50%, -50%) rotate(${ps.rotation}deg) scale(${ps.scale * 0.72})`,
                             zIndex: ps.zIndex
                           }}
                         >

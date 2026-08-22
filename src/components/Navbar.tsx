@@ -76,6 +76,22 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView, gar
             </button>
 
             <button
+              onClick={() => handleNavClick('botanical-guide')}
+              className={`hover:text-[#111111] transition-colors cursor-pointer py-2 relative ${
+                currentView === 'botanical-guide' ? 'text-[#111111] font-bold' : ''
+              }`}
+            >
+              <span>Botanical Library</span>
+              {currentView === 'botanical-guide' && (
+                <motion.div
+                  layoutId="nav-indicator"
+                  className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#111111]"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+            </button>
+
+            <button
               onClick={() => handleNavClick('garden')}
               className={`hover:text-[#111111] transition-colors cursor-pointer py-2 relative ${
                 currentView === 'garden' ? 'text-[#111111] font-bold' : ''
@@ -191,6 +207,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, setCurrentView, gar
             >
               <span>Home</span>
               <span className="text-[10px] text-[#85857D]">Studio</span>
+            </button>
+
+            <button
+              onClick={() => handleNavClick('botanical-guide')}
+              className={`w-full text-left py-2.5 text-xs uppercase tracking-widest border-b border-[#D9D9CE]/60 flex items-center justify-between ${
+                currentView === 'botanical-guide' ? 'font-bold text-[#111111]' : 'text-[#6F6F6F]'
+              }`}
+            >
+              <span>Botanical Library</span>
+              <span className="text-[10px] text-[#85857D]">12 Meanings</span>
             </button>
 
             <button

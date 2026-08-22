@@ -90,71 +90,46 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
   };
 
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-[#F9F9ED] text-[#111111] py-10 sm:py-12 px-6 sm:px-10 font-serif">
-      <div className="max-w-7xl mx-auto space-y-10 sm:space-y-12">
+    <div className="min-h-[calc(100vh-80px)] bg-[#F9F9ED] text-[#111111] py-6 sm:py-8 px-6 sm:px-10 font-serif">
+      <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6">
         
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-[#D9D9CE] pb-8 gap-6">
-          <div className="space-y-3">
-            <div className="text-[10px] uppercase tracking-[0.2em] font-sans font-medium text-[#6F6F6F]">
-              Sanctuary of Shared Stems
-            </div>
-            <h1 className="text-4xl sm:text-6xl font-normal italic tracking-tighter text-[#111111]">
-              The Digital Garden
-            </h1>
-            <p className="text-[#6F6F6F] font-serif font-light max-w-lg text-sm sm:text-base leading-relaxed">
-              Arrangements planted and preserved across sessions. Explore notes, botanical ribbons, wrapping details, stickers, and sentiments.
-            </p>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <h1 className="text-3xl sm:text-5xl font-normal italic tracking-tighter text-[#111111]">
+            The Digital Garden
+          </h1>
 
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             onClick={() => setCurrentView('builder')}
-            className="text-[10px] uppercase tracking-widest border border-[#000000] bg-[#000000] text-[#F9F9ED] px-8 py-3.5 hover:bg-transparent hover:text-[#111111] hover:border-[#111111] transition-all cursor-pointer shadow-xs font-sans self-start md:self-auto shrink-0"
+            className="text-[10px] uppercase tracking-widest border border-[#000000] bg-[#000000] text-[#F9F9ED] px-6 py-3 hover:bg-transparent hover:text-[#111111] hover:border-[#111111] transition-all cursor-pointer font-sans self-start sm:self-auto shrink-0"
           >
             Compose New Bouquet
           </motion.button>
         </div>
 
-        {/* Global Search & Filters Bar */}
+        {/* Global Search Bar */}
         {bouquets.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-[#FAFAF2] border border-[#D9D9CE] p-3.5 sm:p-4 shadow-2xs font-sans">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#85857D]" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search bouquets by recipient name, title, note, or ribbon inscription..."
-                className="w-full pl-10 pr-9 py-2.5 bg-[#F9F9ED] border border-[#D9D9CE] text-xs font-sans placeholder-[#85857D] focus:outline-none focus:border-[#111111] text-[#111111] transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#85857D] hover:text-[#111111] transition-colors cursor-pointer"
-                  title="Clear search"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between sm:justify-end gap-3 text-[10px] uppercase tracking-widest text-[#6F6F6F] px-1 shrink-0">
-              <span className="font-mono">
-                {filteredBouquets.length} of {bouquets.length} {bouquets.length === 1 ? 'Arrangement' : 'Arrangements'}
-              </span>
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="text-xs font-serif italic capitalize underline hover:text-[#111111] cursor-pointer"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
+          <div className="relative font-sans">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#85857D]" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search bouquets by recipient name, title, note, or ribbon..."
+              className="w-full pl-10 pr-9 py-2.5 bg-[#FAFAF2] border border-[#D9D9CE] text-xs font-sans placeholder-[#85857D] focus:outline-none focus:border-[#111111] text-[#111111] transition-colors"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#85857D] hover:text-[#111111] transition-colors cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         )}
 
@@ -213,19 +188,19 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                   className="bg-[#FAFAF2] border border-[#D9D9CE] overflow-hidden hover:border-[#111111] transition-all flex flex-col justify-between group shadow-2xs"
                 >
                   {/* High-Fidelity Preview Thumbnail */}
-                  <div className="aspect-[4/3] relative flex items-center justify-center p-6 overflow-hidden bg-[#F5F5E9] border-b border-[#D9D9CE]">
+                  <div className="aspect-[4/3] relative flex items-center justify-center p-4 overflow-hidden bg-[#F5F5E9] border-b border-[#D9D9CE]">
                     <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
                     
                     {/* Miniature Wrapped Cone & Ribbon Preview */}
-                    <div className="relative w-36 h-40 flex items-center justify-center">
+                    <div className="relative w-36 h-45 aspect-[4/5] flex items-center justify-center">
                       
                       {/* 1. Back Origami Wings */}
-                      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-32 h-30 pointer-events-none z-0 opacity-90">
+                      <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 w-[74%] h-[64%] pointer-events-none z-0 opacity-90">
                         <WrappingPaperSVG styleId={bouquet.wrapping} layer="back" className="w-full h-full" />
                       </div>
 
                       {/* 2. Placed Stems */}
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 scale-85">
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                         {bouquet.flowers.map((pf) => {
                           const flowerDef = FLOWERS.find(f => f.id === pf.flowerId) || FLOWERS[0];
                           return (
@@ -235,11 +210,11 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                                 position: 'absolute',
                                 left: `${pf.x}%`,
                                 top: `${pf.y}%`,
-                                transform: `translate(-50%, -50%) rotate(${pf.rotation}deg) scale(${pf.scale * 0.65})`,
+                                transform: `translate(-50%, -50%) rotate(${pf.rotation}deg) scale(${pf.scale * 0.72})`,
                                 zIndex: pf.zIndex
                               }}
                             >
-                              <div className="w-20 h-24">
+                              <div className="w-20 h-26">
                                 <FlowerSVG 
                                   svgType={flowerDef.svgType} 
                                   color={flowerDef.color} 
@@ -250,26 +225,27 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                         })}
                       </div>
 
-                      {/* 3. Front Tapered Wrap Cone */}
-                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-26 h-20 pointer-events-none z-20">
-                        <WrappingPaperSVG styleId={bouquet.wrapping} layer="front" className="w-full h-full" />
-                      </div>
-                      
-                      {/* 4. Botanical Ribbon Tie with Customization */}
-                      <div className="absolute bottom-11 left-1/2 -translate-x-1/2 w-18 h-12 pointer-events-none z-30 drop-shadow-xs">
-                        <RibbonSVG 
-                          styleId={bouquet.ribbon || 'raw-silk'} 
-                          color={bouquet.ribbonColor}
-                          texture={bouquet.ribbonTexture}
-                          customText={bouquet.ribbonText}
-                          textColor={bouquet.ribbonTextColor}
-                          className="w-full h-full" 
-                        />
+                      {/* 3. Front Tapered Wrap Cone & 4. Ribbon */}
+                      <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none w-[58%] h-[48%]">
+                        <div className="w-full h-full relative">
+                          <WrappingPaperSVG styleId={bouquet.wrapping} layer="front" className="w-full h-full" />
+                        </div>
+
+                        <div className="absolute top-[26%] left-1/2 -translate-x-1/2 w-[52%] h-[32%] pointer-events-none z-30 filter drop-shadow-xs">
+                          <RibbonSVG 
+                            styleId={bouquet.ribbon || 'raw-silk'} 
+                            color={bouquet.ribbonColor}
+                            texture={bouquet.ribbonTexture}
+                            customText={bouquet.ribbonText}
+                            textColor={bouquet.ribbonTextColor}
+                            className="w-full h-full" 
+                          />
+                        </div>
                       </div>
 
                       {/* 5. Decorative Stickers Overlay */}
                       {stickers.length > 0 && (
-                        <div className="absolute inset-0 pointer-events-none z-35 scale-85">
+                        <div className="absolute inset-0 pointer-events-none z-35">
                           {stickers.map((ps) => (
                             <div
                               key={ps.instanceId}
@@ -277,7 +253,7 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                                 position: 'absolute',
                                 left: `${ps.x}%`,
                                 top: `${ps.y}%`,
-                                transform: `translate(-50%, -50%) rotate(${ps.rotation}deg) scale(${ps.scale * 0.65})`,
+                                transform: `translate(-50%, -50%) rotate(${ps.rotation}deg) scale(${ps.scale * 0.72})`,
                                 zIndex: ps.zIndex
                               }}
                             >
@@ -402,9 +378,9 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                 </div>
 
                 {/* Botanical Bouquet Display in Modal */}
-                <div className="relative w-full max-w-[340px] h-[310px] mx-auto flex items-center justify-center">
+                <div className="relative w-full max-w-[340px] aspect-[4/5] mx-auto flex items-center justify-center">
                   {/* 1. Back Origami Wings */}
-                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-48 h-44 pointer-events-none z-0 opacity-90">
+                  <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 w-[74%] h-[64%] pointer-events-none z-0 opacity-90">
                     <WrappingPaperSVG styleId={selectedBouquet.wrapping} layer="back" className="w-full h-full" />
                   </div>
 
@@ -419,11 +395,11 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                             position: 'absolute',
                             left: `${pf.x}%`,
                             top: `${pf.y}%`,
-                            transform: `translate(-50%, -50%) rotate(${pf.rotation}deg) scale(${pf.scale * 0.85})`,
+                            transform: `translate(-50%, -50%) rotate(${pf.rotation}deg) scale(${pf.scale * 0.75})`,
                             zIndex: pf.zIndex
                           }}
                         >
-                          <div className="w-24 h-28">
+                          <div className="w-24 h-30">
                             <FlowerSVG 
                               svgType={flowerDef.svgType} 
                               color={flowerDef.color} 
@@ -434,21 +410,22 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                     })}
                   </div>
 
-                  {/* 3. Front Wrapping Cone */}
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-38 h-28 pointer-events-none z-20">
-                    <WrappingPaperSVG styleId={selectedBouquet.wrapping} layer="front" className="w-full h-full" />
-                  </div>
+                  {/* 3. Front Wrapping Cone & 4. Ribbon */}
+                  <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none w-[58%] h-[48%]">
+                    <div className="w-full h-full relative">
+                      <WrappingPaperSVG styleId={selectedBouquet.wrapping} layer="front" className="w-full h-full" />
+                    </div>
 
-                  {/* 4. Ribbon with Inscribed Text & Texture */}
-                  <div className="absolute bottom-18 left-1/2 -translate-x-1/2 w-26 h-18 pointer-events-auto z-30 filter drop-shadow-md">
-                    <RibbonSVG 
-                      styleId={selectedBouquet.ribbon || 'raw-silk'} 
-                      color={selectedBouquet.ribbonColor}
-                      texture={selectedBouquet.ribbonTexture}
-                      customText={selectedBouquet.ribbonText}
-                      textColor={selectedBouquet.ribbonTextColor}
-                      className="w-full h-full" 
-                    />
+                    <div className="absolute top-[26%] left-1/2 -translate-x-1/2 w-[52%] h-[32%] pointer-events-auto z-30 filter drop-shadow-md">
+                      <RibbonSVG 
+                        styleId={selectedBouquet.ribbon || 'raw-silk'} 
+                        color={selectedBouquet.ribbonColor}
+                        texture={selectedBouquet.ribbonTexture}
+                        customText={selectedBouquet.ribbonText}
+                        textColor={selectedBouquet.ribbonTextColor}
+                        className="w-full h-full" 
+                      />
+                    </div>
                   </div>
 
                   {/* 5. Placed Botanical Stickers */}
@@ -461,7 +438,7 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                             position: 'absolute',
                             left: `${ps.x}%`,
                             top: `${ps.y}%`,
-                            transform: `translate(-50%, -50%) rotate(${ps.rotation}deg) scale(${ps.scale * 0.85})`,
+                            transform: `translate(-50%, -50%) rotate(${ps.rotation}deg) scale(${ps.scale * 0.75})`,
                             zIndex: ps.zIndex
                           }}
                         >

@@ -12,6 +12,10 @@ export const WrappingPaperSVG: React.FC<WrappingPaperSVGProps> = ({
   className = "w-full h-full", 
   layer = 'front' 
 }) => {
+  if (styleId === 'none') {
+    return null;
+  }
+
   // Color & texture palettes for each wrapping style
   const getStyleColors = (id: WrappingStyle) => {
     switch (id) {

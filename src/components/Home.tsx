@@ -1,9 +1,8 @@
 import React from 'react';
 import { AppView } from '../types';
-import { FlowerSVG } from './FlowerSVG';
-import { WrappingPaperSVG } from './WrappingPaperSVG';
-import { RibbonSVG } from './RibbonSVG';
 import { motion } from 'motion/react';
+import defaultRoseImg from '../assets/images/botanical_red_rose_1787378453708.png';
+import { getHomeFeaturedFlower } from '../data/flowers';
 
 interface HomeProps {
   setCurrentView: (view: AppView) => void;
@@ -11,99 +10,113 @@ interface HomeProps {
 }
 
 export const Home: React.FC<HomeProps> = ({ setCurrentView, gardenCount }) => {
+  const handleStartBuilder = () => {
+    setCurrentView('builder');
+  };
+
+  const featured = getHomeFeaturedFlower();
+  const heroImageSrc = featured.flower.imageUrl || defaultRoseImg;
+
   return (
-    <div className="min-h-[calc(100vh-80px)] bg-[#F9F9ED] text-[#111111] flex flex-col justify-between font-serif">
-      <div className="max-w-6xl mx-auto px-6 sm:px-10 pt-12 sm:pt-20 pb-20 sm:pb-28 grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-16 items-center">
-        <div className="md:col-span-7 space-y-6 sm:space-y-8">
-          <div className="text-[10px] uppercase tracking-[0.2em] font-sans font-medium text-[#6F6F6F]">
-            Ephemeral Expressions • Digitally Preserved
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-normal italic tracking-tighter leading-[1.05] text-[#111111]">
-            Send flowers that never fade.
-          </h1>
-
-          <p className="text-base sm:text-lg text-[#6F6F6F] font-serif font-light leading-relaxed max-w-lg">
-            Compose bespoke botanical arrangements stem by stem, wrap them in textured papers, attach a heartfelt verse, and plant them in the digital garden.
-          </p>
-
-          <div className="flex flex-wrap items-center gap-5 pt-4 font-sans">
-            <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => setCurrentView('builder')}
-              className="text-[10px] uppercase tracking-widest border border-[#000000] bg-[#000000] text-[#F9F9ED] px-8 py-3.5 hover:bg-transparent hover:text-[#111111] hover:border-[#111111] transition-all cursor-pointer shadow-xs"
+    <div className="min-h-[calc(100vh-80px)] bg-[#F8F7EB] text-[#111111] flex flex-col justify-center items-center px-6 py-8 sm:py-12 selection:bg-[#EAE8D8]">
+      {/* Centered Editorial Canvas */}
+      <div className="max-w-md w-full mx-auto flex flex-col items-center text-center my-auto space-y-6 sm:space-y-8">
+        
+        {/* 1. Botanical Blossom Emblem (Flower of the Day / Month / Seasonal / Placeholder Rose) */}
+        <div className="flex flex-col items-center">
+          {featured.badgeLabel && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              className="mb-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#EAE8D8] border border-[#D0CEBF] text-[8.5px] font-mono uppercase tracking-[0.2em] text-[#444440]"
             >
-              Build a Bouquet
-            </motion.button>
+              <span>★ {featured.badgeLabel}</span>
+              <span className="text-[#888880]">·</span>
+              <span className="italic font-serif normal-case text-[10px] text-[#111111]">{featured.flower.name}</span>
+            </motion.div>
+          )}
 
-            {gardenCount > 0 && (
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => setCurrentView('garden')}
-                className="text-[10px] uppercase tracking-widest text-[#6F6F6F] hover:text-[#111111] transition-colors cursor-pointer flex items-center gap-2 px-4 py-3.5 border border-transparent hover:border-[#D9D9CE]"
-              >
-                <span>View Garden ({gardenCount})</span>
-              </motion.button>
-            )}
-          </div>
-        </div>
-
-        {/* High-Fidelity Editorial Visual Preview */}
-        <div className="md:col-span-5 relative flex justify-center items-center">
           <motion.div 
-            initial={{ scale: 0.96, opacity: 0 }}
+            initial={{ scale: 0.88, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="w-[290px] h-[380px] sm:w-[350px] sm:h-[450px] bg-[#FAFAF2] border border-[#D9D9CE] p-6 sm:p-8 relative shadow-sm overflow-hidden flex flex-col items-center justify-center group"
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            className="relative w-48 h-48 sm:w-60 sm:h-60 flex items-center justify-center cursor-pointer group"
+            onClick={handleStartBuilder}
+            title={`Start bouquet with ${featured.flower.name}`}
           >
-            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-            
-            {/* Visual Arrangement */}
-            <div className="relative w-full h-full flex items-center justify-center">
-              {/* Back Wrap */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-48 h-44 pointer-events-none z-0 opacity-90">
-                <WrappingPaperSVG styleId="kraft" layer="back" className="w-full h-full" />
-              </div>
-
-              {/* Flowers */}
-              <div className="absolute top-2 sm:top-4 w-28 sm:w-32 h-36 sm:h-40 z-10">
-                <FlowerSVG svgType="peony" color="#F9E0E3" />
-              </div>
-              <div className="absolute top-8 sm:top-10 -left-6 sm:-left-8 w-24 sm:w-28 h-32 sm:h-36 -rotate-12 z-15">
-                <FlowerSVG svgType="rose" color="#F4C2C2" />
-              </div>
-              <div className="absolute top-8 sm:top-10 -right-6 sm:-right-8 w-24 sm:w-28 h-32 sm:h-36 rotate-12 z-15">
-                <FlowerSVG svgType="tulip" color="#FFEDD5" />
-              </div>
-
-              {/* Front Wrap */}
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-36 sm:w-42 h-26 sm:h-30 pointer-events-none z-20">
-                <WrappingPaperSVG styleId="kraft" layer="front" className="w-full h-full" />
-              </div>
-
-              {/* Ribbon */}
-              <div className="absolute bottom-16 sm:bottom-18 left-1/2 -translate-x-1/2 w-20 sm:w-24 h-14 pointer-events-none z-30 filter drop-shadow-xs">
-                <RibbonSVG styleId="raw-silk" className="w-full h-full" />
-              </div>
-            </div>
-
-            <div className="absolute bottom-4 text-center z-35">
-              <p className="font-serif italic text-xs text-[#6F6F6F]">"To plant a garden is to believe in tomorrow."</p>
-            </div>
+            <motion.img 
+              src={heroImageSrc}
+              alt={`Hand-illustrated botanical ${featured.flower.name}`}
+              referrerPolicy="no-referrer"
+              whileHover={{ scale: 1.05, rotate: 1.5 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full object-contain mix-blend-multiply select-none pointer-events-none drop-shadow-xs"
+            />
           </motion.div>
         </div>
-      </div>
 
-      <footer className="border-t border-[#D9D9CE] py-6 sm:py-8 px-6 sm:px-10 text-[9px] uppercase tracking-[0.2em] font-sans text-[#6F6F6F] flex flex-col sm:flex-row items-center justify-between gap-4">
-        <p>&copy; 2026 DigiBouquet Studio. All rights reserved.</p>
-        <div className="flex gap-6 sm:gap-8">
-          <button onClick={() => setCurrentView('home')} className="hover:text-[#111111] transition-colors cursor-pointer">Home</button>
-          <button onClick={() => setCurrentView('builder')} className="hover:text-[#111111] transition-colors cursor-pointer">Builder</button>
-          <button onClick={() => setCurrentView('garden')} className="hover:text-[#111111] transition-colors cursor-pointer">Garden</button>
+        {/* 2. Flourished Script Brand Wordmark & Tagline */}
+        <div className="space-y-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.5 }}
+            className="flex justify-center items-center"
+          >
+            {/* Script Stylized Logo */}
+            <h1 className="font-serif italic font-normal text-5xl sm:text-6xl md:text-7xl tracking-[-0.03em] text-[#111111] leading-none select-none">
+              Digibouquet
+            </h1>
+          </motion.div>
+
+          {/* Strict Sole Text Requirement */}
+          <motion.h2 
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="text-[11px] sm:text-xs font-mono uppercase tracking-[0.26em] text-[#222222] font-medium max-w-sm mx-auto"
+          >
+            Send flowers that never fade.
+          </motion.h2>
         </div>
-      </footer>
+
+        {/* 3. Action Buttons */}
+        <motion.div 
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="w-full max-w-xs sm:max-w-sm space-y-3 pt-1"
+        >
+          {/* Primary Action: Solid Black Brutalist Box */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={handleStartBuilder}
+            className="w-full py-3.5 px-6 bg-[#000000] text-[#F8F7EB] border border-[#000000] text-xs sm:text-[12.5px] font-mono font-semibold uppercase tracking-[0.22em] shadow-xs hover:bg-[#1A1A1A] transition-all cursor-pointer block"
+          >
+            Build a Bouquet
+          </motion.button>
+
+          {/* Secondary Actions */}
+          <div className="flex items-center justify-center gap-6 pt-2">
+            <button
+              onClick={() => setCurrentView('botanical-guide')}
+              className="text-[11px] font-mono font-medium uppercase tracking-[0.18em] text-[#111111] underline underline-offset-4 hover:text-[#555555] transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <span>12 Flower Meanings</span>
+            </button>
+            <span className="text-[#C0BEB0]">·</span>
+            <button
+              onClick={() => setCurrentView('garden')}
+              className="text-[11px] font-mono font-medium uppercase tracking-[0.18em] text-[#111111] underline underline-offset-4 hover:text-[#555555] transition-colors cursor-pointer"
+            >
+              Garden {gardenCount > 0 && `(${gardenCount})`}
+            </button>
+          </div>
+        </motion.div>
+
+      </div>
     </div>
   );
 };

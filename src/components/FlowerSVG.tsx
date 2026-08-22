@@ -180,6 +180,142 @@ export const FlowerSVG: React.FC<FlowerSVGProps> = ({ svgType, color }) => {
         </svg>
       );
 
+    case 'lily':
+      return (
+        <svg viewBox="0 0 100 140" className="w-full h-full drop-shadow-md">
+          <path d="M50 78 L50 138" stroke={stemColor} strokeWidth="3.5" fill="none" strokeLinecap="round" />
+          <path d="M50 105 Q32 100 28 116 Q45 120 50 105" fill={leafColor} />
+          {/* 6 Elegant Flaring Petals */}
+          <path d="M50 50 Q50 15 50 10 Q50 25 50 50" stroke={color} strokeWidth="16" strokeLinecap="round" fill="none" opacity="0.95" />
+          <ellipse cx="50" cy="28" rx="8" ry="20" fill={color} />
+          <ellipse cx="26" cy="38" rx="7" ry="18" fill={color} transform="rotate(-55 26 38)" opacity="0.9" />
+          <ellipse cx="74" cy="38" rx="7" ry="18" fill={color} transform="rotate(55 74 38)" opacity="0.9" />
+          <ellipse cx="30" cy="62" rx="8" ry="18" fill={color} transform="rotate(-115 30 62)" opacity="0.92" />
+          <ellipse cx="70" cy="62" rx="8" ry="18" fill={color} transform="rotate(115 70 62)" opacity="0.92" />
+          <ellipse cx="50" cy="70" rx="8" ry="18" fill={color} transform="rotate(180 50 70)" opacity="0.95" />
+          {/* Center throat & stamens */}
+          <circle cx="50" cy="50" r="7" fill="#8FA356" opacity="0.9" />
+          <path d="M50 50 L42 34 M50 50 L58 34 M50 50 L38 52 M50 50 L62 52" stroke="#6B3E11" strokeWidth="1.2" />
+          <circle cx="42" cy="34" r="2.2" fill="#8B4513" />
+          <circle cx="58" cy="34" r="2.2" fill="#8B4513" />
+          <circle cx="38" cy="52" r="2.2" fill="#8B4513" />
+          <circle cx="62" cy="52" r="2.2" fill="#8B4513" />
+        </svg>
+      );
+
+    case 'sunflower':
+      return (
+        <svg viewBox="0 0 100 140" className="w-full h-full drop-shadow-md">
+          <path d="M50 78 L50 138" stroke={stemColor} strokeWidth="4.5" fill="none" strokeLinecap="round" />
+          <path d="M50 108 Q24 98 18 118 Q42 124 50 108" fill={leafColor} />
+          <path d="M50 120 Q76 110 82 130 Q58 136 50 120" fill={leafColor} />
+          {/* Radiating Golden Ray Petals */}
+          {[0, 24, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336].map((deg, i) => (
+            <ellipse 
+              key={i} 
+              cx="50" 
+              cy="50" 
+              rx="6" 
+              ry="26" 
+              fill={i % 2 === 0 ? color : '#E5A910'} 
+              transform={`rotate(${deg} 50 50)`} 
+              opacity="0.95"
+            />
+          ))}
+          {/* Seed Disc Core */}
+          <circle cx="50" cy="50" r="16" fill="#3D2314" />
+          <circle cx="50" cy="50" r="13" fill="#251408" />
+          <circle cx="50" cy="50" r="9" fill="#180C05" />
+          {/* Golden stipples */}
+          <circle cx="50" cy="50" r="13" stroke="#D4AF37" strokeWidth="1" strokeDasharray="2 3" fill="none" opacity="0.7" />
+          <circle cx="50" cy="50" r="7" stroke="#D4AF37" strokeWidth="1" strokeDasharray="1.5 2.5" fill="none" opacity="0.7" />
+        </svg>
+      );
+
+    case 'zinnia':
+      return (
+        <svg viewBox="0 0 100 140" className="w-full h-full drop-shadow-sm">
+          <path d="M50 80 L50 138" stroke={stemColor} strokeWidth="3" fill="none" strokeLinecap="round" />
+          <path d="M50 106 Q70 100 74 114 Q56 120 50 106" fill={leafColor} />
+          {/* Outer ray florets */}
+          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg, i) => (
+            <path
+              key={`out-${i}`}
+              d="M50 50 Q43 24 50 20 Q57 24 50 50 Z"
+              fill={color}
+              transform={`rotate(${deg} 50 50)`}
+              opacity="0.85"
+            />
+          ))}
+          {/* Inner dense ray florets */}
+          {[15, 45, 75, 105, 135, 165, 195, 225, 255, 285, 315, 345].map((deg, i) => (
+            <path
+              key={`in-${i}`}
+              d="M50 50 Q44 30 50 26 Q56 30 50 50 Z"
+              fill={color}
+              transform={`rotate(${deg} 50 50)`}
+              opacity="0.95"
+            />
+          ))}
+          {/* Tiny center ring and cone */}
+          <circle cx="50" cy="50" r="11" fill="#4A2A0C" />
+          <circle cx="50" cy="50" r="8" stroke="#FBD034" strokeWidth="2.2" strokeDasharray="2 2" fill="#7A4112" />
+        </svg>
+      );
+
+    case 'carnation':
+      return (
+        <svg viewBox="0 0 100 140" className="w-full h-full drop-shadow-sm">
+          <path d="M50 82 L50 138" stroke={stemColor} strokeWidth="3.2" fill="none" strokeLinecap="round" />
+          {/* Calyx sepals */}
+          <path d="M43 78 L50 86 L57 78 L54 68 L46 68 Z" fill={leafColor} />
+          <path d="M50 108 Q30 102 26 116 Q45 120 50 108" fill={leafColor} />
+          {/* Ruffled layered petals with serrated feel */}
+          <circle cx="50" cy="48" r="28" fill={color} opacity="0.65" />
+          <path d="M26 48 Q32 30 50 32 Q68 30 74 48 Q68 66 50 64 Q32 66 26 48 Z" fill={color} opacity="0.75" />
+          <path d="M32 46 Q38 34 50 36 Q62 34 68 46 Q62 58 50 56 Q38 58 32 46 Z" fill={color} opacity="0.88" />
+          <path d="M38 46 Q42 38 50 40 Q58 38 62 46 Q58 52 50 50 Q42 52 38 46 Z" fill={color} opacity="0.95" />
+          <circle cx="50" cy="46" r="6" fill="#FFF2F2" opacity="0.5" />
+        </svg>
+      );
+
+    case 'dahlia':
+      return (
+        <svg viewBox="0 0 100 140" className="w-full h-full drop-shadow-md">
+          <path d="M50 82 L50 138" stroke={stemColor} strokeWidth="3.8" fill="none" strokeLinecap="round" />
+          <path d="M50 108 Q72 102 76 118 Q56 122 50 108" fill={leafColor} />
+          {/* Geometric multi-layered pointed petals */}
+          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg, i) => (
+            <path
+              key={`d1-${i}`}
+              d="M50 50 L42 26 L50 18 L58 26 Z"
+              fill={color}
+              transform={`rotate(${deg} 50 50)`}
+              opacity="0.8"
+            />
+          ))}
+          {[15, 45, 75, 105, 135, 165, 195, 225, 255, 285, 315, 345].map((deg, i) => (
+            <path
+              key={`d2-${i}`}
+              d="M50 50 L44 32 L50 24 L56 32 Z"
+              fill={color}
+              transform={`rotate(${deg} 50 50)`}
+              opacity="0.9"
+            />
+          ))}
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
+            <path
+              key={`d3-${i}`}
+              d="M50 50 L46 38 L50 32 L54 38 Z"
+              fill={color}
+              transform={`rotate(${deg} 50 50)`}
+              opacity="1"
+            />
+          ))}
+          <circle cx="50" cy="50" r="5" fill="#4B1226" />
+        </svg>
+      );
+
     default:
       return (
         <svg viewBox="0 0 100 140" className="w-full h-full">

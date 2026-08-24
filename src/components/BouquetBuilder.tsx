@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Flower as FlowerType, PlacedFlower, PlacedSticker, StickerId, Bouquet, WrappingStyle, RibbonStyle, RibbonTexture, AppView } from '../types';
-import { FLOWERS, MOOD_FILTERS, WRAPPING_OPTIONS, RIBBON_OPTIONS, RIBBON_TEXTURES, RIBBON_COLORS, RIBBON_TEXT_COLORS, RIBBON_TEXT_PRESETS, organizeBouquetStems } from '../data/flowers';
+import { 
+  Flower as FlowerType, PlacedFlower, Bouquet, 
+  WrappingStyle, RibbonStyle, RibbonTexture, AppView, CompositionTemplate, AnchorType 
+} from '../types';
+import { FLOWERS } from '../data/flowers';
 import { FlowerSVG } from './FlowerSVG';
-import { RibbonSVG } from './RibbonSVG';
-import { WrappingPaperSVG } from './WrappingPaperSVG';
-import { StickerSVG, STICKERS_CATALOG } from './StickerSVG';
 import { MiniPreview } from './MiniPreview';
 import { FlowerInfoCard } from './FlowerInfoCard';
+import { CompositionAnchor } from './CompositionAnchor';
+import { calculateSmartArrangement, getNextSmartSlot } from '../utils/arrangement';
 import { 
-  Sparkles, Plus, Minus, Trash2, RefreshCcw, Check, 
-  Send, Wand2, Package, Layers, ChevronRight, X, Flower2, Undo2, ArrowUp, ArrowDown, Sliders, Download, Image as ImageIcon, Sparkle, Type, Palette, Feather, Tag, Eye, Info, Calendar, Heart, Gift
+  Plus, Minus, Undo2, Wand2, Download, Sliders, ArrowUp, ArrowDown, X, Info 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toPng } from 'html-to-image';
@@ -21,66 +22,62 @@ interface BouquetBuilderProps {
 
 interface HistoryStep {
   flowers: PlacedFlower[];
-  stickers: PlacedSticker[];
 }
 
 export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({ 
   onSaveBouquet, 
   setCurrentView 
 }) => {
+  // Placed flowers (normalized % coordinates)
   const [placedFlowers, setPlacedFlowers] = useState<PlacedFlower[]>([
-    { instanceId: 'init-1', flowerId: 'rose-red', x: 50, y: 36, rotation: 0, scale: 1.15, zIndex: 22 },
-    { instanceId: 'init-2', flowerId: 'peony-coral', x: 40, y: 42, rotation: -10, scale: 1.08, zIndex: 18 },
-    { instanceId: 'init-3', flowerId: 'tulip-parisian', x: 60, y: 42, rotation: 10, scale: 1.08, zIndex: 18 },
-    { instanceId: 'init-4', flowerId: 'eucalyptus-silver', x: 28, y: 41, rotation: -22, scale: 1.0, zIndex: 6 },
-    { instanceId: 'init-5', flowerId: 'eucalyptus-silver', x: 72, y: 41, rotation: 22, scale: 1.0, zIndex: 8 },
-  ]);
-
-  const [placedStickers, setPlacedStickers] = useState<PlacedSticker[]>([
-    { instanceId: 'init-stk-1', stickerId: 'butterfly-gold', x: 66, y: 22, rotation: 15, scale: 1.0, zIndex: 55 },
-    { instanceId: 'init-stk-2', stickerId: 'pollen-sparkle', x: 44, y: 30, rotation: 0, scale: 0.9, zIndex: 56 }
+    { instanceId: 'init-1', flowerId: 'rose-red', x: 50, y: 37, rotation: 0, scale: 1.20, zIndex: 24, role: 'focal' },
+    { instanceId: 'init-2', flowerId: 'peony-coral', x: 37, y: 43, rotation: -12, scale: 1.10, zIndex: 20, role: 'supporting' },
+    { instanceId: 'init-3', flowerId: 'tulip-parisian', x: 63, y: 43, rotation: 12, scale: 1.10, zIndex: 20, role: 'supporting' },
+    { instanceId: 'init-4', flowerId: 'eucalyptus-silver', x: 26, y: 39, rotation: -22, scale: 1.00, zIndex: 12, role: 'foliage' },
+    { instanceId: 'init-5', flowerId: 'eucalyptus-silver', x: 74, y: 39, rotation: 22, scale: 1.00, zIndex: 12, role: 'foliage' },
   ]);
 
   const [history, setHistory] = useState<HistoryStep[]>([]);
-  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>('init-1');
-  const [selectedStickerId, setSelectedStickerId] = useState<string | null>(null);
-  const [visibleSquareId, setVisibleSquareId] = useState<string | null>('init-1');
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
+  const [visibleSquareId, setVisibleSquareId] = useState<string | null>(null);
   const [squareTimer, setSquareTimer] = useState<NodeJS.Timeout | null>(null);
 
-  // Meaning & Personality States
-  const [selectedMoodFilter, setSelectedMoodFilter] = useState<string>('all');
+  // Floriography inspection
   const [hoveredFlower, setHoveredFlower] = useState<FlowerType | null>(null);
   const [inspectedFlower, setInspectedFlower] = useState<FlowerType | null>(null);
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  const [wrapping, setWrapping] = useState<WrappingStyle>('kraft');
-  const [ribbon, setRibbon] = useState<RibbonStyle>('raw-silk');
-  const [ribbonTexture, setRibbonTexture] = useState<RibbonTexture>('silk');
-  const [ribbonColor, setRibbonColor] = useState<string>('#F7F4EF');
-  const [ribbonText, setRibbonText] = useState<string>('Forever in Bloom');
-  const [ribbonTextColor, setRibbonTextColor] = useState<string>('#D4AF37');
-
-  const [recipientName, setRecipientName] = useState('');
-  const [senderName, setSenderName] = useState('');
+  // Optional Note & Gift Message
   const [note, setNote] = useState('');
-  const [bouquetTitle, setBouquetTitle] = useState('Bespoke Arrangement');
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [isExportingImage, setIsExportingImage] = useState(false);
-  const [activeTab, setActiveTab] = useState<'flowers' | 'stickers' | 'wrapping' | 'ribbons' | 'card'>('flowers');
-  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
-  const [dragTarget, setDragTarget] = useState<{ type: 'flower' | 'sticker'; id: string } | null>(null);
+  // Default wrapping & anchor
+  const wrapping: WrappingStyle = 'kraft';
+  const ribbon: RibbonStyle = 'raw-silk';
+  const ribbonColor = '#F7F4EF';
+  const ribbonTexture: RibbonTexture = 'silk';
+  const ribbonText = '';
+  const ribbonTextColor = '#D4AF37';
+  const template: CompositionTemplate = 'round';
+  const anchorType: AnchorType = 'soft-wrap';
+
+  const [dragTarget, setDragTarget] = useState<{ id: string; offset: { x: number; y: number } } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const artboardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => {
       if (squareTimer) clearTimeout(squareTimer);
+      if (hoverTimeout) clearTimeout(hoverTimeout);
     };
-  }, [squareTimer]);
+  }, [squareTimer, hoverTimeout]);
 
   const pushHistory = () => {
-    setHistory(prev => [...prev.slice(-15), { flowers: placedFlowers, stickers: placedStickers }]);
+    setHistory(prev => [
+      ...prev.slice(-15), 
+      { flowers: placedFlowers }
+    ]);
   };
 
   const handleUndo = () => {
@@ -88,137 +85,64 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
     const previousState = history[history.length - 1];
     setHistory(prev => prev.slice(0, prev.length - 1));
     setPlacedFlowers(previousState.flowers);
-    setPlacedStickers(previousState.stickers);
     setSelectedInstanceId(null);
-    setSelectedStickerId(null);
     setVisibleSquareId(null);
   };
 
   const handleSelectFlower = (instanceId: string) => {
     setSelectedInstanceId(instanceId);
-    setSelectedStickerId(null);
     setVisibleSquareId(instanceId);
 
     if (squareTimer) clearTimeout(squareTimer);
     const timer = setTimeout(() => {
       setVisibleSquareId(null);
-    }, 3500);
-    setSquareTimer(timer);
-  };
-
-  const handleSelectSticker = (instanceId: string) => {
-    setSelectedStickerId(instanceId);
-    setSelectedInstanceId(null);
-    setVisibleSquareId(instanceId);
-
-    if (squareTimer) clearTimeout(squareTimer);
-    const timer = setTimeout(() => {
-      setVisibleSquareId(null);
-    }, 3500);
+    }, 4000);
     setSquareTimer(timer);
   };
 
   const handleBringForward = () => {
-    if (selectedInstanceId) {
-      const maxZ = Math.max(0, ...placedFlowers.map(f => f.zIndex));
-      setPlacedFlowers(placedFlowers.map(f => 
-        f.instanceId === selectedInstanceId ? { ...f, zIndex: maxZ + 1 } : f
-      ));
-    } else if (selectedStickerId) {
-      const maxZ = Math.max(50, ...placedStickers.map(s => s.zIndex));
-      setPlacedStickers(placedStickers.map(s => 
-        s.instanceId === selectedStickerId ? { ...s, zIndex: maxZ + 1 } : s
-      ));
-    }
+    if (!selectedInstanceId) return;
+    const maxZ = Math.max(0, ...placedFlowers.map(f => f.zIndex));
+    setPlacedFlowers(placedFlowers.map(f => 
+      f.instanceId === selectedInstanceId ? { ...f, zIndex: maxZ + 1 } : f
+    ));
   };
 
   const handleSendBackward = () => {
-    if (selectedInstanceId) {
-      const minZ = Math.min(...placedFlowers.map(f => f.zIndex));
-      setPlacedFlowers(placedFlowers.map(f => 
-        f.instanceId === selectedInstanceId ? { ...f, zIndex: Math.max(1, minZ - 1) } : f
-      ));
-    } else if (selectedStickerId) {
-      const minZ = Math.min(...placedStickers.map(s => s.zIndex));
-      setPlacedStickers(placedStickers.map(s => 
-        s.instanceId === selectedStickerId ? { ...s, zIndex: Math.max(1, minZ - 1) } : s
-      ));
-    }
+    if (!selectedInstanceId) return;
+    const minZ = Math.min(...placedFlowers.map(f => f.zIndex));
+    setPlacedFlowers(placedFlowers.map(f => 
+      f.instanceId === selectedInstanceId ? { ...f, zIndex: Math.max(8, minZ - 1) } : f
+    ));
   };
 
-  const handleOrganizeBouquet = () => {
+  // Automatic Smart Harmonization
+  const handleHarmonize = () => {
+    if (placedFlowers.length === 0) return;
     pushHistory();
-    setPlacedFlowers(prev => organizeBouquetStems(prev));
+    const arranged = calculateSmartArrangement(placedFlowers, 'round');
+    setPlacedFlowers(arranged);
   };
 
   const handleAddFlower = (flower: FlowerType) => {
     pushHistory();
     const count = placedFlowers.length;
-    // Smart bouquet fan slot placement so new flowers naturally land in harmonious positions
-    const isFoliage = flower.id === 'eucalyptus-silver' || flower.id === 'lavender-french';
-    const angleSlots = [
-      { x: 50, y: 36, rot: 0 },
-      { x: 40, y: 42, rot: -10 },
-      { x: 60, y: 42, rot: 10 },
-      { x: 50, y: 47, rot: 2 },
-      { x: 32, y: 45, rot: -20 },
-      { x: 68, y: 45, rot: 20 },
-      { x: 44, y: 34, rot: -6 },
-      { x: 56, y: 34, rot: 6 },
-      { x: 28, y: 47, rot: -26 },
-      { x: 72, y: 47, rot: 26 },
-    ];
-    
-    let defaultPos = angleSlots[count % angleSlots.length];
-    if (isFoliage) {
-      const foliageCount = placedFlowers.filter(f => f.flowerId === 'eucalyptus-silver' || f.flowerId === 'lavender-french').length;
-      const isLeft = foliageCount % 2 === 0;
-      defaultPos = {
-        x: isLeft ? 28 : 72,
-        y: 41,
-        rot: isLeft ? -22 : 22
-      };
-    }
-
-    const randomOffsetX = (Math.random() - 0.5) * 6;
-    const randomOffsetY = (Math.random() - 0.5) * 4;
-    const instanceId = `flower-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    const maxZ = placedFlowers.length > 0 ? Math.max(...placedFlowers.map(f => f.zIndex)) : 10;
+    const slot = getNextSmartSlot(count, flower, 'round');
+    const instanceId = `flower-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 
     const newFlower: PlacedFlower = {
       instanceId,
       flowerId: flower.id,
-      x: defaultPos.x + randomOffsetX,
-      y: defaultPos.y + randomOffsetY,
-      rotation: defaultPos.rot,
-      scale: flower.defaultScale || 1.0,
-      zIndex: isFoliage ? 6 : maxZ + 1,
+      x: slot.x,
+      y: slot.y,
+      rotation: slot.rotation,
+      scale: slot.scale,
+      zIndex: slot.zIndex,
+      role: flower.role || 'supporting',
     };
 
     setPlacedFlowers(prev => [...prev, newFlower]);
     handleSelectFlower(instanceId);
-  };
-
-  const handleAddSticker = (stickerId: StickerId) => {
-    pushHistory();
-    const randomOffsetX = (Math.random() - 0.5) * 20;
-    const randomOffsetY = (Math.random() - 0.5) * 12;
-    const randomRotation = Math.floor((Math.random() - 0.5) * 24);
-    const instanceId = `sticker-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-    const maxZ = placedStickers.length > 0 ? Math.max(...placedStickers.map(s => s.zIndex)) : 55;
-
-    const newSticker: PlacedSticker = {
-      instanceId,
-      stickerId,
-      x: 50 + randomOffsetX,
-      y: 24 + randomOffsetY,
-      rotation: randomRotation,
-      scale: 1.0,
-      zIndex: maxZ + 1,
-    };
-
-    setPlacedStickers(prev => [...prev, newSticker]);
-    handleSelectSticker(instanceId);
   };
 
   const handleRemoveFlower = (instanceId: string) => {
@@ -237,15 +161,6 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
     handleRemoveFlower(lastInstance.instanceId);
   };
 
-  const handleRemoveSticker = (instanceId: string) => {
-    pushHistory();
-    setPlacedStickers(prev => prev.filter(s => s.instanceId !== instanceId));
-    if (selectedStickerId === instanceId) {
-      setSelectedStickerId(null);
-      setVisibleSquareId(null);
-    }
-  };
-
   const handleUpdateSelectedFlower = (updates: Partial<PlacedFlower>) => {
     if (!selectedInstanceId) return;
     setPlacedFlowers(prev => prev.map(f => 
@@ -253,84 +168,68 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
     ));
   };
 
-  const handleUpdateSelectedSticker = (updates: Partial<PlacedSticker>) => {
-    if (!selectedStickerId) return;
-    setPlacedStickers(prev => prev.map(s => 
-      s.instanceId === selectedStickerId ? { ...s, ...updates } : s
-    ));
-  };
-
   const handleReset = () => {
     pushHistory();
     setPlacedFlowers([]);
-    setPlacedStickers([]);
     setSelectedInstanceId(null);
-    setSelectedStickerId(null);
     setVisibleSquareId(null);
+  };
+
+  const handleStartDrag = (id: string, clientX: number, clientY: number) => {
+    if (!artboardRef.current) return;
+    const rect = artboardRef.current.getBoundingClientRect();
+    const touchX = ((clientX - rect.left) / rect.width) * 100;
+    const touchY = ((clientY - rect.top) / rect.height) * 100;
+
+    const item = placedFlowers.find(f => f.instanceId === id);
+    if (item) {
+      setDragTarget({ id, offset: { x: item.x - touchX, y: item.y - touchY } });
+    }
   };
 
   const handleCanvasPointerMove = (clientX: number, clientY: number) => {
     if (!dragTarget || !artboardRef.current) return;
     const rect = artboardRef.current.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * 100;
-    const y = ((clientY - rect.top) / rect.height) * 100;
+    const touchX = ((clientX - rect.left) / rect.width) * 100;
+    const touchY = ((clientY - rect.top) / rect.height) * 100;
 
-    const clampedX = Math.max(12, Math.min(88, x));
-    const clampedY = Math.max(12, Math.min(82, y));
+    const x = touchX + dragTarget.offset.x;
+    const y = touchY + dragTarget.offset.y;
 
-    if (dragTarget.type === 'flower') {
-      setPlacedFlowers(prev => prev.map(f => 
-        f.instanceId === dragTarget.id ? { ...f, x: clampedX, y: clampedY } : f
-      ));
-    } else if (dragTarget.type === 'sticker') {
-      setPlacedStickers(prev => prev.map(s => 
-        s.instanceId === dragTarget.id ? { ...s, x: clampedX, y: clampedY } : s
-      ));
-    }
-  };
+    const clampedX = Math.max(10, Math.min(90, x));
+    const clampedY = Math.max(10, Math.min(85, y));
 
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    handleCanvasPointerMove(e.clientX, e.clientY);
-  };
-
-  const handleCanvasTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length > 0) {
-      handleCanvasPointerMove(e.touches[0].clientX, e.touches[0].clientY);
-    }
+    setPlacedFlowers(prev => prev.map(f => 
+      f.instanceId === dragTarget.id ? { ...f, x: clampedX, y: clampedY } : f
+    ));
   };
 
   const handleGenerateAI = async () => {
     setIsGeneratingAI(true);
     try {
-      const stemNames = placedFlowers.map(f => {
-        const d = FLOWERS.find(fl => fl.id === f.flowerId);
-        return d ? d.name : 'flower';
-      });
-
       const randomVerses = [
-        "In quiet corners where soft petals turn to light, may your heart find peace and blossoming delight.",
-        "Gathered from morning dew and gentle winds, a timeless bouquet for a cherished soul.",
+        "In quiet moments where soft petals turn to morning light, may your heart find peace and blooming joy.",
+        "Gathered with care and gentle warmth, a timeless bouquet for someone truly special.",
         "May joy unfold around you gently, petal by petal, like spring awakening after winter rain.",
-        "A symphony of fresh stems to brighten your hours and bring serene garden warmth into your day."
+        "A symphony of fresh blooms to brighten your hours and bring serene garden warmth into your day.",
+        "Wishing you gentle days filled with sunshine, simple beauty, and boundless comfort."
       ];
 
       setTimeout(() => {
         const chosen = randomVerses[Math.floor(Math.random() * randomVerses.length)];
         setNote(chosen);
         setIsGeneratingAI(false);
-      }, 700);
+      }, 500);
     } catch (e) {
       console.error(e);
       setIsGeneratingAI(false);
     }
   };
 
-  // High quality PNG export using html-to-image
   const handleExportPNG = async () => {
     if (!artboardRef.current) return;
     setIsExportingImage(true);
     
-    // Deselect active squares during capture for clean artwork
     const prevVisibleSquare = visibleSquareId;
     setVisibleSquareId(null);
 
@@ -343,13 +242,9 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
         cacheBust: true,
         fontEmbedCSS: '',
       });
-
-      const sanitizedTitle = (bouquetTitle || 'DigiBouquet_Artwork')
-        .replace(/[^a-z0-9]/gi, '_')
-        .toLowerCase();
       
       const link = document.createElement('a');
-      link.download = `${sanitizedTitle}.png`;
+      link.download = `digibouquet_arrangement.png`;
       link.href = dataUrl;
       link.click();
     } catch (error) {
@@ -362,25 +257,27 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
 
   const handleFinishBouquet = () => {
     if (placedFlowers.length === 0) {
-      alert('Please add at least one botanical stem to compose your bouquet.');
+      alert('Please add at least one botanical bloom to compose your arrangement.');
       return;
     }
 
     const newBouquet: Bouquet = {
       id: `bouquet-${Date.now()}`,
-      title: bouquetTitle || 'Untitled Bouquet',
+      title: 'Bespoke Floral Arrangement',
       flowers: placedFlowers,
-      stickers: placedStickers,
+      stickers: [],
       wrapping,
       ribbon,
       ribbonColor,
       ribbonTexture,
-      ribbonText: ribbonText.trim(),
+      ribbonText,
       ribbonTextColor,
-      recipientName: recipientName || 'Someone Special',
-      senderName: senderName || 'Anonymous',
-      note: note || 'With heartfelt affection.',
-      createdAt: Date.now()
+      recipientName: 'Someone Special',
+      senderName: 'With Love',
+      note: note.trim() || 'With heartfelt affection.',
+      createdAt: Date.now(),
+      template: 'round',
+      anchorType: 'soft-wrap',
     };
 
     onSaveBouquet(newBouquet);
@@ -389,841 +286,306 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
 
   const selectedFlowerItem = placedFlowers.find(f => f.instanceId === selectedInstanceId);
   const selectedFlowerDef = selectedFlowerItem ? FLOWERS.find(f => f.id === selectedFlowerItem.flowerId) : null;
-  
-  const selectedStickerItem = placedStickers.find(s => s.instanceId === selectedStickerId);
-  const selectedStickerDef = selectedStickerItem ? STICKERS_CATALOG.find(sc => sc.id === selectedStickerItem.stickerId) : null;
-
-  const currentWrappingObj = WRAPPING_OPTIONS.find(w => w.id === wrapping) || WRAPPING_OPTIONS[0];
-  const currentRibbonObj = RIBBON_OPTIONS.find(r => r.id === ribbon) || RIBBON_OPTIONS[0];
-  const currentTextureObj = RIBBON_TEXTURES.find(t => t.id === ribbonTexture) || RIBBON_TEXTURES[0];
-  const currentColorObj = RIBBON_COLORS.find(c => c.hex.toLowerCase() === ribbonColor.toLowerCase());
 
   return (
-    <div className="min-h-[calc(100vh-80px)] flex flex-col md:flex-row overflow-hidden bg-[#F9F9ED] text-[#111111]">
+    <div className="w-full flex flex-col md:flex-row bg-[#F9F9ED] text-[#111111]">
       
-      {/* Sidebar Library & Controls (Desktop) or Collapsible Drawer (Mobile) */}
-      <aside className={`w-full md:w-[340px] lg:w-[380px] border-r border-[#D9D9CE] flex flex-col bg-[#F9F9ED]/95 backdrop-blur-md overflow-y-auto z-20 transition-all ${
-        mobileDrawerOpen ? 'fixed inset-x-0 top-[73px] bottom-16 h-[calc(100vh-137px)] p-6 bg-[#FAFAF2] shadow-2xl z-40 block' : 'hidden md:flex p-6 md:p-7 max-h-[calc(100vh-80px)]'
-      }`}>
+      {/* Sidebar / Flower Library (Desktop: Left Column; Mobile: Below Canvas in unified natural flow) */}
+      <aside className="w-full md:w-[380px] lg:w-[420px] md:border-r border-[#D9D9CE] bg-[#FAFAF2] p-4 sm:p-6 md:p-7 md:max-h-[calc(100vh-80px)] md:overflow-y-auto flex flex-col gap-6 order-2 md:order-1">
         
-        {/* Navigation Tabs */}
-        <div className="grid grid-cols-5 border-b border-[#D9D9CE] pb-2 mb-4 font-sans text-[8.5px] sm:text-[9px] uppercase tracking-[0.12em] font-medium text-[#6F6F6F] text-center">
-          <button
-            onClick={() => setActiveTab('flowers')}
-            className={`pb-1.5 transition-colors cursor-pointer active:scale-95 ${activeTab === 'flowers' ? 'text-[#111111] border-b-2 border-[#111111] font-bold' : 'hover:text-[#111111]'}`}
-          >
-            Stems
-          </button>
-          <button
-            onClick={() => setActiveTab('stickers')}
-            className={`pb-1.5 transition-colors cursor-pointer active:scale-95 flex items-center justify-center gap-1 ${activeTab === 'stickers' ? 'text-[#111111] border-b-2 border-[#111111] font-bold' : 'hover:text-[#111111]'}`}
-          >
-            <span>Stickers</span>
-            {placedStickers.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>}
-          </button>
-          <button
-            onClick={() => setActiveTab('wrapping')}
-            className={`pb-1.5 transition-colors cursor-pointer active:scale-95 ${activeTab === 'wrapping' ? 'text-[#111111] border-b-2 border-[#111111] font-bold' : 'hover:text-[#111111]'}`}
-          >
-            Wrap
-          </button>
-          <button
-            onClick={() => setActiveTab('ribbons')}
-            className={`pb-1.5 transition-colors cursor-pointer active:scale-95 flex items-center justify-center gap-1 ${activeTab === 'ribbons' ? 'text-[#111111] border-b-2 border-[#111111] font-bold' : 'hover:text-[#111111]'}`}
-          >
-            <span>Ribbon</span>
-            {ribbonText.trim() && <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>}
-          </button>
-          <button
-            onClick={() => setActiveTab('card')}
-            className={`pb-1.5 transition-colors cursor-pointer active:scale-95 ${activeTab === 'card' ? 'text-[#111111] border-b-2 border-[#111111] font-bold' : 'hover:text-[#111111]'}`}
-          >
-            Card
-          </button>
+        {/* Flower Library Header */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-[11px] uppercase tracking-[0.18em] font-bold text-[#111111]">
+              Available Blooms ({FLOWERS.length})
+            </h2>
+            <button
+              type="button"
+              onClick={() => setCurrentView('botanical-guide')}
+              className="text-[9px] uppercase tracking-wider font-mono text-[#85857D] hover:text-[#111111] underline cursor-pointer"
+            >
+              Botanical Guide ↗
+            </button>
+          </div>
+          <p className="text-[10px] text-[#6F6F6F] font-sans">
+            Choose blooms to compose into your bouquet. Tap ⓘ for symbolism & lore.
+          </p>
         </div>
 
-        {/* Tab 1: Botanical Flowers */}
-        {activeTab === 'flowers' && (
-          <div className="mb-6 space-y-4 font-sans">
-            {/* Choose by Meaning Header & Filter */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <span className="text-[8px] uppercase tracking-[0.2em] font-mono text-[#85857D] block">
-                    Floriography Filter
-                  </span>
-                  <h3 className="text-[10px] uppercase tracking-[0.16em] font-semibold text-[#111111] flex items-center gap-1.5">
-                    <span>What are you trying to say?</span>
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentView('botanical-guide')}
-                  className="text-[8.5px] uppercase tracking-wider font-mono text-[#85857D] hover:text-[#111111] underline cursor-pointer"
-                >
-                  Library ↗
-                </button>
-              </div>
+        {/* 17 Blooms Grid: Clean 2-column scrollable library */}
+        <div className="grid grid-cols-2 gap-2.5">
+          {FLOWERS.map((flower) => {
+            const count = placedFlowers.filter(pf => pf.flowerId === flower.id).length;
+            const isHovered = hoveredFlower?.id === flower.id;
 
-              {/* Mood Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
-                {MOOD_FILTERS.map((mood) => {
-                  const isSelected = selectedMoodFilter === mood.id;
-                  return (
-                    <button
-                      key={mood.id}
-                      onClick={() => setSelectedMoodFilter(mood.id)}
-                      className={`px-2.5 py-1 text-[9px] uppercase tracking-wider font-mono shrink-0 transition-all cursor-pointer flex items-center gap-1 border ${
-                        isSelected
-                          ? 'bg-[#111111] text-[#F8F7EB] border-[#111111] font-bold shadow-2xs'
-                          : 'bg-[#FAFAF2] text-[#6F6F6F] border-[#D9D9CE] hover:border-[#85857D] hover:text-[#111111]'
-                      }`}
-                      title={mood.description}
-                    >
-                      <span className="text-[10px]">{mood.emoji}</span>
-                      <span>{mood.label.replace('All 12 Flowers', 'All Stems')}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Botanical Stems Grid */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[9px] uppercase tracking-[0.15em] font-semibold text-[#85857D]">
-                  Stems ({FLOWERS.filter(f => selectedMoodFilter === 'all' || f.moods?.includes(selectedMoodFilter)).length})
-                </span>
-                <span className="text-[8.5px] text-[#85857D] italic">
-                  Hover/Tap ⓘ to inspect personality
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2.5">
-                {FLOWERS
-                  .filter(f => selectedMoodFilter === 'all' || f.moods?.includes(selectedMoodFilter))
-                  .map((flower) => {
-                    const count = placedFlowers.filter(pf => pf.flowerId === flower.id).length;
-                    const isHovered = hoveredFlower?.id === flower.id;
-
-                    return (
-                      <div
-                        key={flower.id}
-                        onMouseEnter={() => {
-                          if (hoverTimeout) clearTimeout(hoverTimeout);
-                          setHoveredFlower(flower);
-                        }}
-                        onMouseLeave={() => {
-                          const timeout = setTimeout(() => {
-                            setHoveredFlower(null);
-                          }, 250);
-                          setHoverTimeout(timeout);
-                        }}
-                        className={`bg-[#FAFAF2] border transition-all relative flex flex-col justify-between p-2 shadow-2xs group ${
-                          isHovered ? 'border-[#111111] ring-1 ring-[#111111]/20' : 'border-[#D9D9CE] hover:border-[#85857D]'
-                        }`}
-                      >
-                        {/* Top Meta: Birth month + Info (i) button */}
-                        <div className="flex items-center justify-between w-full mb-1">
-                          {flower.birthMonth ? (
-                            <span className="text-[7.5px] uppercase font-mono px-1 py-0.2 bg-[#EAE8D8] text-[#555555] tracking-wider">
-                              {flower.birthMonth.slice(0, 3)}
-                            </span>
-                          ) : (
-                            <span className="text-[7.5px] uppercase font-mono px-1 py-0.2 text-[#85857D] tracking-wider">
-                              Stem
-                            </span>
-                          )}
-
-                          {/* Explicit Info Button (Tapping opens info without selecting/deselecting) */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setInspectedFlower(flower);
-                            }}
-                            className="w-5 h-5 rounded-full bg-[#EAE8D8] hover:bg-[#111111] hover:text-[#F8F7EB] text-[#111111] flex items-center justify-center transition-colors cursor-pointer border border-[#D0CEBF]"
-                            title="Inspect Flower Meaning & Personality"
-                          >
-                            <Info className="w-2.5 h-2.5" />
-                          </button>
-                        </div>
-
-                        {/* Flower Visual Artwork */}
-                        <div 
-                          onClick={() => setInspectedFlower(flower)}
-                          className="w-full h-16 bg-transparent flex items-center justify-center p-1 cursor-pointer group-hover:scale-[1.05] transition-transform my-1 overflow-hidden"
-                        >
-                          {flower.imageUrl ? (
-                            <img 
-                              src={flower.imageUrl} 
-                              alt={flower.name} 
-                              className="w-full h-full object-contain mix-blend-multiply select-none" 
-                              referrerPolicy="no-referrer"
-                            />
-                          ) : (
-                            <div className="w-9 h-13">
-                              <FlowerSVG svgType={flower.svgType} color={flower.color} />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Flower Name & Meaning Snippet */}
-                        <div className="mt-1 text-center">
-                          <h4 
-                            onClick={() => setInspectedFlower(flower)}
-                            className="text-[10px] font-serif italic text-[#111111] truncate cursor-pointer group-hover:text-amber-900"
-                          >
-                            {flower.name}
-                          </h4>
-                          <p className="text-[7.5px] text-[#85857D] font-mono uppercase tracking-wider truncate">
-                            {flower.meaning.slice(0, 2).join(' · ')}
-                          </p>
-                        </div>
-
-                        {/* Distinct Action Bar: Add & Decrement Count */}
-                        <div className="mt-2 pt-1.5 border-t border-[#EAE8D8] flex items-center gap-1 w-full">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleAddFlower(flower);
-                              if (window.innerWidth < 768) setMobileDrawerOpen(false);
-                            }}
-                            className="flex-1 py-1.5 bg-[#111111] text-[#F8F7EB] text-[8.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1 hover:bg-[#222222] transition-colors cursor-pointer"
-                          >
-                            <Plus className="w-2.5 h-2.5" />
-                            <span>Add</span>
-                            {count > 0 && <span className="text-[#E5A910]">({count})</span>}
-                          </button>
-
-                          {count > 0 && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRemoveFlowerByType(flower);
-                              }}
-                              className="p-1.5 border border-[#D9D9CE] hover:border-red-600 hover:text-red-600 text-[#6F6F6F] bg-[#FAFAF2] transition-colors cursor-pointer"
-                              title={`Remove 1 ${flower.name}`}
-                            >
-                              <Minus className="w-2.5 h-2.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Botanical Decorative Stickers Overlay */}
-        {activeTab === 'stickers' && (
-          <div className="mb-6 space-y-4 font-sans">
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <h3 className="text-[10px] uppercase tracking-[0.15em] font-semibold text-[#85857D]">
-                  Botanical Accents & Fauna
-                </h3>
-                <span className="text-[9px] text-[#6F6F6F]">{placedStickers.length} placed</span>
-              </div>
-              <p className="text-[10px] text-[#6F6F6F] leading-relaxed mb-3">
-                Tap to place fluttering butterflies, meadow honeybees, botanical ladybugs, dragonflies, or golden pollen sparkles onto your arrangement.
-              </p>
-
-              <div className="grid grid-cols-2 gap-2.5">
-                {STICKERS_CATALOG.map((stk) => {
-                  const placedCount = placedStickers.filter(s => s.stickerId === stk.id).length;
-
-                  return (
-                    <motion.button
-                      key={stk.id}
-                      whileHover={{ scale: 1.03, y: -1 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => {
-                        handleAddSticker(stk.id);
-                        if (window.innerWidth < 768) setMobileDrawerOpen(false);
-                      }}
-                      className="p-3 bg-[#FAFAF2] border border-[#D9D9CE] hover:border-[#111111] transition-all flex flex-col items-center justify-center text-center cursor-pointer shadow-2xs group relative"
-                    >
-                      {placedCount > 0 && (
-                        <div className="absolute top-1.5 right-1.5 w-4 h-4 bg-[#111111] text-[#F9F9ED] rounded-full text-[9px] flex items-center justify-center font-medium">
-                          {placedCount}
-                        </div>
-                      )}
-                      <div className="w-12 h-12 mb-1.5 flex items-center justify-center group-hover:scale-115 transition-transform">
-                        <StickerSVG stickerId={stk.id} />
-                      </div>
-                      <span className="font-serif italic text-xs text-[#111111] truncate w-full">{stk.name}</span>
-                      <span className="text-[8px] text-[#6F6F6F] uppercase tracking-wider mt-0.5">{stk.category}</span>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Wrapping Paper */}
-        {activeTab === 'wrapping' && (
-          <div className="mb-6 space-y-4 font-sans">
-            <div>
-              <h3 className="text-[10px] uppercase tracking-[0.15em] font-semibold mb-2.5 text-[#85857D]">Wrapping Paper</h3>
-              <div className="space-y-2 text-xs">
-                {WRAPPING_OPTIONS.map((w) => (
-                  <motion.button
-                    key={w.id}
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setWrapping(w.id as WrappingStyle)}
-                    className={`w-full p-3 border text-left flex items-center justify-between transition-all cursor-pointer ${
-                      wrapping === w.id ? 'border-[#111111] bg-[#F5F5E9] font-medium shadow-2xs' : 'border-[#D9D9CE] hover:border-[#85857D] bg-[#FAFAF2]'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-serif italic text-sm text-[#111111]">{w.name}</div>
-                      <div className="text-[9px] text-[#6F6F6F] uppercase tracking-wider">{w.desc}</div>
-                    </div>
-                    {w.id === 'none' ? (
-                      <span className="text-[10px] font-mono text-[#85857D] border border-dashed border-[#85857D]/50 px-1.5 py-0.5 rounded">
-                        None
-                      </span>
-                    ) : (
-                      <span className={`w-5 h-5 rounded-full ${w.bg} border border-[#111111]/20 shrink-0 shadow-2xs`} />
-                    )}
-                  </motion.button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 4: Ribbons Customization Panel */}
-        {activeTab === 'ribbons' && (
-          <div className="mb-6 space-y-6 font-sans">
-            {/* Header & Live Ribbon Preview Banner */}
-            <div className="bg-[#FAFAF2] border border-[#D9D9CE] p-4 space-y-3 shadow-2xs">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] font-semibold text-[#85857D]">
-                    <Sparkle className="w-3 h-3 text-[#111111]" />
-                    <span>Ribbon Atelier</span>
-                  </div>
-                  <h3 className="text-sm font-serif italic text-[#111111] font-medium">Bespoke Silk & Velvet Ties</h3>
-                </div>
-                <span className="text-[9px] uppercase tracking-widest px-2 py-0.5 bg-[#111111]/5 border border-[#111111]/10 text-[#6F6F6F] font-mono">
-                  {currentTextureObj.name}
-                </span>
-              </div>
-
-              {/* Dynamic Live Ribbon Swatch */}
-              <div className="relative h-24 bg-[#F5F5E9] border border-[#D9D9CE] overflow-hidden flex items-center justify-center p-2">
-                <div className="w-28 h-20">
-                  <RibbonSVG 
-                    styleId={ribbon} 
-                    color={ribbonColor}
-                    texture={ribbonTexture}
-                    customText={ribbonText}
-                    textColor={ribbonTextColor}
-                    className="w-full h-full" 
-                  />
-                </div>
-                {ribbonText.trim() && (
-                  <div className="absolute bottom-1 right-2 text-[8.5px] font-serif italic text-[#6F6F6F] bg-[#FAFAF2]/90 px-1.5 py-0.5 border border-[#D9D9CE]/70">
-                    "{ribbonText}"
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Section 1: Personalized Ribbon Inscription */}
-            <div className="space-y-3 border-t border-[#D9D9CE] pt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Type className="w-3.5 h-3.5 text-[#111111]" />
-                  <h4 className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#111111]">
-                    Personalized Ribbon Inscription
-                  </h4>
-                </div>
-                <span className="text-[9px] text-[#6F6F6F] font-mono">{ribbonText.length}/42</span>
-              </div>
-              <p className="text-[10px] text-[#6F6F6F] leading-tight">
-                Letters elegantly embossed and draped along the digital ribbon overlay.
-              </p>
-
-              {/* Text Input with Clear Button */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={ribbonText}
-                  maxLength={42}
-                  onChange={(e) => setRibbonText(e.target.value)}
-                  placeholder="e.g. Forever in Bloom, For Clara"
-                  className="w-full pl-3 pr-8 py-2.5 border border-[#D9D9CE] bg-[#FAFAF2] text-xs font-serif italic focus:outline-none focus:border-[#111111] text-[#111111]"
-                />
-                {ribbonText && (
+            return (
+              <div
+                key={flower.id}
+                onMouseEnter={() => {
+                  if (hoverTimeout) clearTimeout(hoverTimeout);
+                  setHoveredFlower(flower);
+                }}
+                onMouseLeave={() => {
+                  const timeout = setTimeout(() => {
+                    setHoveredFlower(null);
+                  }, 250);
+                  setHoverTimeout(timeout);
+                }}
+                className={`bg-[#FAFAF2] border transition-all relative flex flex-col justify-between p-2 shadow-2xs group ${
+                  isHovered ? 'border-[#111111] ring-1 ring-[#111111]/20' : 'border-[#D9D9CE] hover:border-[#85857D]'
+                }`}
+              >
+                {/* Top Meta: Info button */}
+                <div className="flex items-center justify-end w-full mb-1">
                   <button
                     type="button"
-                    onClick={() => setRibbonText('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[#85857D] hover:text-[#111111] transition-colors cursor-pointer"
-                    title="Clear text"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setInspectedFlower(flower);
+                    }}
+                    className="w-5 h-5 rounded-full bg-[#EAE8D8] hover:bg-[#111111] hover:text-[#F8F7EB] text-[#111111] flex items-center justify-center transition-colors cursor-pointer border border-[#D0CEBF]"
+                    title={`Inspect ${flower.name} Meaning & Lore`}
                   >
-                    <X className="w-3 h-3" />
+                    <Info className="w-2.5 h-2.5" />
                   </button>
-                )}
-              </div>
+                </div>
 
-              {/* Quick Sentiment Chips */}
-              <div className="space-y-1.5">
-                <div className="text-[9px] uppercase tracking-wider text-[#85857D] font-medium">Quick Sentiments</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {RIBBON_TEXT_PRESETS.map((preset) => (
+                {/* Flower Visual Vector Art */}
+                <div 
+                  onClick={() => setInspectedFlower(flower)}
+                  className="w-full h-16 bg-transparent flex items-center justify-center p-1 cursor-pointer group-hover:scale-[1.06] transition-transform my-1 overflow-hidden"
+                >
+                  <div className="w-14 h-14 flex items-center justify-center">
+                    <FlowerSVG flowerId={flower.id} svgType={flower.svgType} color={flower.color} imageUrl={flower.imageUrl} />
+                  </div>
+                </div>
+
+                {/* Flower Name & Meaning Snippet */}
+                <div className="mt-1 text-center">
+                  <h4 
+                    onClick={() => setInspectedFlower(flower)}
+                    className="text-[10px] font-serif italic text-[#111111] truncate cursor-pointer group-hover:text-amber-900"
+                  >
+                    {flower.name}
+                  </h4>
+                  <p className="text-[7.5px] text-[#85857D] font-mono uppercase tracking-wider truncate">
+                    {flower.meaning.slice(0, 2).join(' · ')}
+                  </p>
+                </div>
+
+                {/* Action Bar: Add & Decrement */}
+                <div className="mt-2 pt-1.5 border-t border-[#EAE8D8] flex items-center gap-1 w-full">
+                  <button
+                    type="button"
+                    onClick={() => handleAddFlower(flower)}
+                    className="flex-1 py-1.5 bg-[#111111] text-[#F8F7EB] text-[8.5px] font-mono uppercase tracking-wider font-semibold flex items-center justify-center gap-1 hover:bg-[#222222] transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-2.5 h-2.5" />
+                    <span>Add</span>
+                    {count > 0 && <span className="text-[#E5A910]">({count})</span>}
+                  </button>
+
+                  {count > 0 && (
                     <button
-                      key={preset}
                       type="button"
-                      onClick={() => setRibbonText(preset)}
-                      className={`text-[9px] font-serif italic px-2.5 py-1 border transition-all cursor-pointer ${
-                        ribbonText === preset 
-                          ? 'bg-[#111111] text-[#F9F9ED] border-[#111111]' 
-                          : 'bg-[#FAFAF2] text-[#4A4A4A] border-[#D9D9CE] hover:border-[#111111]'
-                      }`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Inscription Lettering Foil / Thread Color */}
-              <div className="space-y-1.5 pt-1">
-                <div className="text-[9px] uppercase tracking-wider text-[#85857D] font-medium">Lettering Thread / Foil</div>
-                <div className="flex items-center gap-2">
-                  {RIBBON_TEXT_COLORS.map((tc) => {
-                    const isSelected = ribbonTextColor.toLowerCase() === tc.hex.toLowerCase();
-                    return (
-                      <button
-                        key={tc.id}
-                        type="button"
-                        onClick={() => setRibbonTextColor(tc.hex)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1.5 border text-[9px] transition-all cursor-pointer ${
-                          isSelected ? 'border-[#111111] bg-[#FAFAF2] font-semibold ring-1 ring-[#111111]' : 'border-[#D9D9CE] bg-[#FAFAF2]/60 hover:border-[#85857D]'
-                        }`}
-                        title={tc.name}
-                      >
-                        <span 
-                          className="w-3 h-3 rounded-full border border-black/20 shrink-0" 
-                          style={{ backgroundColor: tc.hex }} 
-                        />
-                        <span className="text-[#333333]">{tc.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Section 2: Ribbon Material & Texture */}
-            <div className="space-y-3 border-t border-[#D9D9CE] pt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Feather className="w-3.5 h-3.5 text-[#111111]" />
-                  <h4 className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#111111]">
-                    Ribbon Material & Texture
-                  </h4>
-                </div>
-                <span className="text-[9px] uppercase tracking-wider text-[#6F6F6F] font-mono">
-                  {currentTextureObj.badge}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                {RIBBON_TEXTURES.map((t) => {
-                  const isSelected = ribbonTexture === t.id;
-                  return (
-                    <motion.button
-                      key={t.id}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setRibbonTexture(t.id as RibbonTexture)}
-                      className={`p-2.5 border text-left flex flex-col justify-between transition-all cursor-pointer ${
-                        isSelected 
-                          ? 'border-[#111111] bg-[#F5F5E9] font-medium shadow-2xs ring-1 ring-[#111111]' 
-                          : 'border-[#D9D9CE] hover:border-[#85857D] bg-[#FAFAF2]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full mb-1">
-                        <span className="font-serif italic text-xs text-[#111111]">{t.name}</span>
-                        <span className="text-[7.5px] uppercase tracking-wider px-1 py-0.2 bg-[#111111]/5 border border-[#111111]/10 text-[#6F6F6F]">
-                          {t.badge}
-                        </span>
-                      </div>
-                      <div className="text-[8.5px] text-[#6F6F6F] line-clamp-1">{t.desc}</div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Section 3: Ribbon Color Palette */}
-            <div className="space-y-3 border-t border-[#D9D9CE] pt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Palette className="w-3.5 h-3.5 text-[#111111]" />
-                  <h4 className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#111111]">
-                    Botanical Color Palette
-                  </h4>
-                </div>
-                <span className="text-[9px] text-[#6F6F6F] font-mono">
-                  {currentColorObj ? currentColorObj.name : ribbonColor}
-                </span>
-              </div>
-
-              {/* Color Swatch Grid */}
-              <div className="grid grid-cols-7 gap-2">
-                {RIBBON_COLORS.map((c) => {
-                  const isSelected = ribbonColor.toLowerCase() === c.hex.toLowerCase();
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setRibbonColor(c.hex)}
-                      className={`group relative aspect-square rounded-full border transition-transform cursor-pointer flex items-center justify-center ${
-                        isSelected ? 'scale-110 ring-2 ring-[#111111] ring-offset-1 ring-offset-[#F9F9ED]' : 'hover:scale-105 border-[#111111]/20'
-                      }`}
-                      style={{ backgroundColor: c.hex }}
-                      title={c.name}
-                    >
-                      {isSelected && (
-                        <Check className={`w-3 h-3 ${['#f7f4ef', '#f5d6d6', '#e8ddcb', '#ffffff'].includes(c.hex.toLowerCase()) ? 'text-black' : 'text-white'}`} />
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Custom Color Input */}
-              <div className="flex items-center gap-2 pt-1">
-                <label className="text-[9px] uppercase tracking-wider text-[#85857D] whitespace-nowrap">
-                  Custom Tone:
-                </label>
-                <div className="flex items-center gap-1.5 flex-1">
-                  <input
-                    type="color"
-                    value={ribbonColor}
-                    onChange={(e) => setRibbonColor(e.target.value)}
-                    className="w-7 h-7 p-0 border border-[#D9D9CE] bg-transparent cursor-pointer rounded-xs"
-                    title="Select custom shade"
-                  />
-                  <input
-                    type="text"
-                    value={ribbonColor}
-                    onChange={(e) => setRibbonColor(e.target.value)}
-                    className="flex-1 px-2.5 py-1 text-xs border border-[#D9D9CE] bg-[#FAFAF2] font-mono text-[#111111] uppercase"
-                    placeholder="#F7F4EF"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Section 4: Classic Pre-Curated Ribbons */}
-            <div className="space-y-3 border-t border-[#D9D9CE] pt-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Tag className="w-3.5 h-3.5 text-[#111111]" />
-                  <h4 className="text-[10px] uppercase tracking-[0.15em] font-bold text-[#111111]">
-                    Curated Signature Ties
-                  </h4>
-                </div>
-                <span className="text-[9px] text-[#6F6F6F]">Quick Archetypes</span>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                {RIBBON_OPTIONS.map((r) => {
-                  const isSelected = ribbon === r.id && ribbonColor === r.color;
-                  return (
-                    <motion.button
-                      key={r.id}
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        setRibbon(r.id as RibbonStyle);
-                        setRibbonColor(r.color);
-                        if (r.id === 'jute-twine') setRibbonTexture('jute');
-                        else if (r.id.includes('velvet')) setRibbonTexture('velvet');
-                        else if (r.id.includes('chiffon')) setRibbonTexture('chiffon');
-                        else if (r.id.includes('satin')) setRibbonTexture('satin');
-                        else setRibbonTexture('silk');
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFlowerByType(flower);
                       }}
-                      className={`w-full p-2.5 border text-left flex items-center justify-between transition-all cursor-pointer ${
-                        isSelected ? 'border-[#111111] bg-[#F5F5E9] font-medium shadow-2xs ring-1 ring-[#111111]' : 'border-[#D9D9CE] hover:border-[#85857D] bg-[#FAFAF2]'
-                      }`}
+                      className="p-1.5 border border-[#D9D9CE] hover:border-red-600 hover:text-red-600 text-[#6F6F6F] bg-[#FAFAF2] transition-colors cursor-pointer"
+                      title={`Remove 1 ${flower.name}`}
                     >
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-serif italic text-xs text-[#111111]">{r.name}</span>
-                          <span className="text-[7.5px] uppercase tracking-widest px-1 py-0.2 bg-[#111111]/5 border border-[#111111]/10 text-[#6F6F6F]">
-                            {r.material}
-                          </span>
-                        </div>
-                        <div className="text-[8.5px] text-[#6F6F6F] line-clamp-1">{r.desc}</div>
-                      </div>
-
-                      <div className="w-8 h-8 shrink-0 flex items-center justify-center p-0.5">
-                        <RibbonSVG styleId={r.id as RibbonStyle} color={r.color} className="w-full h-full" />
-                      </div>
-                    </motion.button>
-                  );
-                })}
+                      <Minus className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                </div>
               </div>
+            );
+          })}
+        </div>
+
+        {/* Selected Bloom Fine-Tuning Controls (Visible when a bloom is selected) */}
+        {selectedInstanceId && selectedFlowerItem && (
+          <div className="bg-[#F5F5E9] border border-[#D9D9CE] p-3.5 space-y-3 font-sans shadow-2xs">
+            <div className="flex justify-between items-center font-sans">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-[#111111] flex items-center gap-1">
+                <Sliders className="w-3 h-3 text-[#111111]" />
+                <span>Bloom Tuning</span>
+              </span>
+              <span className="text-[10px] text-[#6F6F6F] italic truncate max-w-[140px]">
+                {selectedFlowerDef ? selectedFlowerDef.name : 'Selected'}
+              </span>
             </div>
 
-          </div>
-        )}
-
-        {/* Tab 5: Card & Sentiments */}
-        {activeTab === 'card' && (
-          <div className="mb-6 space-y-4 font-sans">
             <div>
-              <label className="block text-[10px] uppercase tracking-widest text-[#6F6F6F] mb-1">Bouquet Title</label>
+              <div className="flex justify-between text-[9.5px] mb-1 text-[#6F6F6F]">
+                <span>Size</span>
+                <span>{Math.round(selectedFlowerItem.scale * 100)}%</span>
+              </div>
               <input
-                type="text"
-                value={bouquetTitle}
-                onChange={(e) => setBouquetTitle(e.target.value)}
-                className="w-full p-2.5 border border-[#D9D9CE] bg-[#FAFAF2] text-xs focus:outline-none focus:border-[#111111] font-serif text-[#111111]"
+                type="range"
+                min="0.5"
+                max="1.8"
+                step="0.05"
+                value={selectedFlowerItem.scale}
+                onChange={(e) => handleUpdateSelectedFlower({ scale: parseFloat(e.target.value) })}
+                className="w-full accent-[#111111] cursor-pointer h-1 bg-[#D9D9CE]"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] uppercase tracking-widest text-[#6F6F6F] mb-1">Recipient</label>
-                <input
-                  type="text"
-                  value={recipientName}
-                  onChange={(e) => setRecipientName(e.target.value)}
-                  className="w-full p-2.5 border border-[#D9D9CE] bg-[#FAFAF2] text-xs focus:outline-none focus:border-[#111111] font-serif text-[#111111]"
-                  placeholder="Clara"
-                />
+            <div>
+              <div className="flex justify-between text-[9.5px] mb-1 text-[#6F6F6F]">
+                <span>Angle</span>
+                <span>{selectedFlowerItem.rotation}°</span>
               </div>
-              <div>
-                <label className="block text-[10px] uppercase tracking-widest text-[#6F6F6F] mb-1">Sender</label>
-                <input
-                  type="text"
-                  value={senderName}
-                  onChange={(e) => setSenderName(e.target.value)}
-                  className="w-full p-2.5 border border-[#D9D9CE] bg-[#FAFAF2] text-xs focus:outline-none focus:border-[#111111] font-serif text-[#111111]"
-                  placeholder="Julian"
-                />
-              </div>
+              <input
+                type="range"
+                min="-45"
+                max="45"
+                step="1"
+                value={selectedFlowerItem.rotation}
+                onChange={(e) => handleUpdateSelectedFlower({ rotation: parseInt(e.target.value) })}
+                className="w-full accent-[#111111] cursor-pointer h-1 bg-[#D9D9CE]"
+              />
             </div>
 
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="block text-[10px] uppercase tracking-widest text-[#6F6F6F]">Gift Note</label>
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex gap-1.5">
                 <button
                   type="button"
-                  onClick={handleGenerateAI}
-                  disabled={isGeneratingAI}
-                  className="text-[10px] uppercase tracking-wider text-[#111111] hover:underline flex items-center gap-1 font-semibold cursor-pointer active:scale-95"
+                  onClick={handleBringForward}
+                  className="p-1.5 border border-[#D9D9CE] text-[9.5px] uppercase tracking-wider text-[#111111] hover:border-[#111111] cursor-pointer flex items-center gap-1 bg-[#FAFAF2]"
+                  title="Bring Forward"
                 >
-                  <Wand2 className="w-3 h-3" />
-                  <span>{isGeneratingAI ? 'Composing...' : 'AI Verse'}</span>
+                  <ArrowUp className="w-3 h-3" />
+                  <span>Layer +</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendBackward}
+                  className="p-1.5 border border-[#D9D9CE] text-[9.5px] uppercase tracking-wider text-[#111111] hover:border-[#111111] cursor-pointer flex items-center gap-1 bg-[#FAFAF2]"
+                  title="Send Backward"
+                >
+                  <ArrowDown className="w-3 h-3" />
+                  <span>Layer -</span>
                 </button>
               </div>
-              <textarea
-                rows={3}
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="w-full p-2.5 border border-[#D9D9CE] bg-[#FAFAF2] text-xs focus:outline-none focus:border-[#111111] font-serif italic text-[#111111]"
-                placeholder="Write a personal note or generate with AI..."
-              />
+
+              <button
+                type="button"
+                onClick={() => handleRemoveFlower(selectedInstanceId)}
+                className="text-[9.5px] uppercase tracking-widest text-red-600 hover:underline cursor-pointer active:scale-95 font-sans font-semibold"
+              >
+                Remove
+              </button>
             </div>
           </div>
         )}
 
-        {/* Selected Item Fine-Tuning Controls (Stem or Sticker) */}
-        <div className="mt-auto pt-4 border-t border-[#D9D9CE]">
-          <div className="flex justify-between items-center mb-3 font-sans">
-            <span className="text-[10px] uppercase tracking-widest font-bold text-[#111111] flex items-center gap-1">
-              <Sliders className="w-3 h-3" />
-              <span>{selectedStickerId ? 'Sticker Tuning' : 'Stem Tuning'}</span>
-            </span>
-            <span className="text-[10px] text-[#6F6F6F] truncate max-w-[140px]">
-              {selectedStickerDef ? selectedStickerDef.name : selectedFlowerDef ? selectedFlowerDef.name : 'Select item'}
-            </span>
+        {/* Integrated Optional Message Area */}
+        <div className="bg-[#FAFAF2] border border-[#D9D9CE] p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[10px] uppercase tracking-[0.18em] font-bold text-[#111111]">
+              A Little Note
+            </h3>
+            <button
+              type="button"
+              onClick={handleGenerateAI}
+              disabled={isGeneratingAI}
+              className="text-[9px] uppercase tracking-wider text-[#111111] hover:underline flex items-center gap-1 font-semibold cursor-pointer active:scale-95"
+            >
+              <Wand2 className="w-3 h-3 text-amber-600" />
+              <span>{isGeneratingAI ? 'Composing...' : 'AI Verse'}</span>
+            </button>
           </div>
+          <p className="text-[9.5px] text-[#85857D] font-mono">
+            Write something for them... (optional)
+          </p>
+          <textarea
+            rows={3}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Write something from the heart..."
+            className="w-full p-2.5 border border-[#D9D9CE] bg-[#F9F9ED] text-xs font-serif italic focus:outline-none focus:border-[#111111] text-[#111111] placeholder:text-[#85857D]/60 resize-none"
+          />
+        </div>
 
-          {/* Stem Tuning */}
-          {selectedInstanceId && selectedFlowerItem && (
-            <div className="space-y-3 font-sans">
-              <div>
-                <div className="flex justify-between text-[10px] mb-1 text-[#6F6F6F]">
-                  <span>Scale</span>
-                  <span>{Math.round(selectedFlowerItem.scale * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="1.8"
-                  step="0.05"
-                  value={selectedFlowerItem.scale}
-                  onChange={(e) => handleUpdateSelectedFlower({ scale: parseFloat(e.target.value) })}
-                  className="w-full accent-[#111111] cursor-pointer h-1 bg-[#D9D9CE]"
-                />
-              </div>
+        {/* Mobile-Only Action Buttons Container (Placed naturally at end of mobile flow) */}
+        <div className="flex md:hidden items-center justify-between gap-2 pt-3 pb-8 border-t border-[#D9D9CE]">
+          <button
+            type="button"
+            onClick={handleUndo}
+            disabled={history.length === 0}
+            className={`flex-1 text-[10px] uppercase tracking-[0.16em] font-medium py-2.5 px-3 border border-[#D9D9CE] transition-all flex items-center justify-center gap-1 ${
+              history.length > 0 ? 'bg-[#FAFAF2] text-[#111111] hover:border-[#111111]' : 'bg-[#FAFAF2]/50 text-[#85857D] opacity-50'
+            }`}
+          >
+            <Undo2 className="w-3.5 h-3.5" />
+            <span>Undo</span>
+          </button>
 
-              <div>
-                <div className="flex justify-between text-[10px] mb-1 text-[#6F6F6F]">
-                  <span>Rotation</span>
-                  <span>{selectedFlowerItem.rotation}°</span>
-                </div>
-                <input
-                  type="range"
-                  min="-45"
-                  max="45"
-                  step="1"
-                  value={selectedFlowerItem.rotation}
-                  onChange={(e) => handleUpdateSelectedFlower({ rotation: parseInt(e.target.value) })}
-                  className="w-full accent-[#111111] cursor-pointer h-1 bg-[#D9D9CE]"
-                />
-              </div>
+          <button
+            type="button"
+            onClick={handleFinishBouquet}
+            className="flex-2 text-[10px] uppercase tracking-[0.18em] font-medium py-2.5 px-4 bg-[#000000] text-[#F9F9ED] border border-[#000000] hover:bg-transparent hover:text-[#111111] transition-all"
+          >
+            Finish Bouquet
+          </button>
 
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={handleBringForward}
-                    className="p-1.5 border border-[#D9D9CE] text-[10px] uppercase tracking-wider text-[#111111] hover:border-[#111111] cursor-pointer flex items-center gap-1 bg-[#FAFAF2]"
-                    title="Bring Forward"
-                  >
-                    <ArrowUp className="w-3 h-3" />
-                    <span>Layer +</span>
-                  </button>
-                  <button
-                    onClick={handleSendBackward}
-                    className="p-1.5 border border-[#D9D9CE] text-[10px] uppercase tracking-wider text-[#111111] hover:border-[#111111] cursor-pointer flex items-center gap-1 bg-[#FAFAF2]"
-                    title="Send Backward"
-                  >
-                    <ArrowDown className="w-3 h-3" />
-                    <span>Layer -</span>
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => handleRemoveFlower(selectedInstanceId)}
-                  className="text-[10px] uppercase tracking-widest text-red-600 hover:underline cursor-pointer active:scale-95 font-sans"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Sticker Tuning */}
-          {selectedStickerId && selectedStickerItem && (
-            <div className="space-y-3 font-sans">
-              <div>
-                <div className="flex justify-between text-[10px] mb-1 text-[#6F6F6F]">
-                  <span>Sticker Scale</span>
-                  <span>{Math.round(selectedStickerItem.scale * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.4"
-                  max="2.0"
-                  step="0.05"
-                  value={selectedStickerItem.scale}
-                  onChange={(e) => handleUpdateSelectedSticker({ scale: parseFloat(e.target.value) })}
-                  className="w-full accent-[#111111] cursor-pointer h-1 bg-[#D9D9CE]"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between text-[10px] mb-1 text-[#6F6F6F]">
-                  <span>Angle</span>
-                  <span>{selectedStickerItem.rotation}°</span>
-                </div>
-                <input
-                  type="range"
-                  min="-180"
-                  max="180"
-                  step="2"
-                  value={selectedStickerItem.rotation}
-                  onChange={(e) => handleUpdateSelectedSticker({ rotation: parseInt(e.target.value) })}
-                  className="w-full accent-[#111111] cursor-pointer h-1 bg-[#D9D9CE]"
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={handleBringForward}
-                    className="p-1.5 border border-[#D9D9CE] text-[10px] uppercase tracking-wider text-[#111111] hover:border-[#111111] cursor-pointer flex items-center gap-1 bg-[#FAFAF2]"
-                    title="Bring Forward"
-                  >
-                    <ArrowUp className="w-3 h-3" />
-                    <span>Layer +</span>
-                  </button>
-                  <button
-                    onClick={handleSendBackward}
-                    className="p-1.5 border border-[#D9D9CE] text-[10px] uppercase tracking-wider text-[#111111] hover:border-[#111111] cursor-pointer flex items-center gap-1 bg-[#FAFAF2]"
-                    title="Send Backward"
-                  >
-                    <ArrowDown className="w-3 h-3" />
-                    <span>Layer -</span>
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => handleRemoveSticker(selectedStickerId)}
-                  className="text-[10px] uppercase tracking-widest text-red-600 hover:underline cursor-pointer active:scale-95 font-sans"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!selectedInstanceId && !selectedStickerId && (
-            <p className="text-[10px] font-sans text-[#6F6F6F] italic">Tap any flower or sticker to adjust scale, rotation & layering.</p>
-          )}
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={placedFlowers.length === 0}
+            className={`flex-1 text-[10px] uppercase tracking-[0.16em] font-medium py-2.5 px-3 border border-[#D9D9CE] transition-all flex items-center justify-center ${
+              placedFlowers.length > 0 ? 'bg-[#FAFAF2] text-[#111111] hover:border-[#111111]' : 'bg-[#FAFAF2]/50 text-[#85857D] opacity-50'
+            }`}
+          >
+            Reset
+          </button>
         </div>
 
       </aside>
 
-      {/* Main Canvas Area */}
+      {/* Main Studio Canvas Area */}
       <main 
         ref={canvasRef}
-        onMouseMove={handleCanvasMouseMove}
+        onMouseMove={(e) => handleCanvasPointerMove(e.clientX, e.clientY)}
         onMouseUp={() => setDragTarget(null)}
         onMouseLeave={() => setDragTarget(null)}
-        className="flex-1 relative bg-[#F9F9ED] flex flex-col items-center justify-between p-3 md:p-8 overflow-hidden select-none"
+        onTouchMove={(e) => {
+          if (e.touches.length > 0) {
+            handleCanvasPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+          }
+        }}
+        onTouchEnd={() => setDragTarget(null)}
+        className="flex-1 relative bg-[#F9F9ED] flex flex-col items-center justify-between p-3 sm:p-6 md:p-8 select-none order-1 md:order-2 md:max-h-[calc(100vh-80px)] md:overflow-y-auto"
       >
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
 
-        {/* Top Action Bar (Auto-Arrange, Export PNG, Mobile Toggle, Info) */}
-        <div className="w-full max-w-2xl flex items-center justify-between bg-[#FAFAF2] border border-[#D9D9CE] px-3.5 py-2 mb-2 z-20 shadow-2xs">
+        {/* Top Action Bar */}
+        <div className="w-full max-w-xl flex items-center justify-between bg-[#FAFAF2] border border-[#D9D9CE] px-3.5 py-2 mb-3 z-20 shadow-2xs">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#111111]"></span>
             <span className="text-[10px] font-sans uppercase tracking-widest font-bold text-[#111111]">
-              {placedFlowers.length} Stems • {placedStickers.length} Stickers
+              {placedFlowers.length} {placedFlowers.length === 1 ? 'Bloom' : 'Blooms'}
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Auto-Organize Stems Button */}
+          <div className="flex items-center gap-2">
+            {/* Auto Harmonize */}
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.95 }}
-              onClick={handleOrganizeBouquet}
+              onClick={handleHarmonize}
               disabled={placedFlowers.length === 0}
               className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest font-sans font-medium px-2.5 py-1.5 border transition-all cursor-pointer bg-[#F9F9ED] hover:bg-[#111111] hover:text-[#F9F9ED] text-[#111111] border-[#D9D9CE]"
-              title="Harmonize stems into an organized florist bouquet"
+              title="Intelligently rebalance bloom placement"
             >
               <Wand2 className="w-3 h-3 text-amber-600" />
-              <span>Auto-Arrange</span>
+              <span>Harmonize</span>
             </motion.button>
 
-            {/* Export PNG Button */}
+            {/* Export PNG */}
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.95 }}
@@ -1237,59 +599,62 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
               title="Save high-resolution PNG image of your bouquet"
             >
               <Download className="w-3 h-3" />
-              <span className="hidden xs:inline">{isExportingImage ? 'Exporting...' : 'Export PNG'}</span>
-              <span className="xs:hidden">PNG</span>
+              <span>{isExportingImage ? 'Exporting...' : 'PNG'}</span>
             </motion.button>
-
-            {/* Mobile Drawer Toggle */}
-            <button
-              onClick={() => setMobileDrawerOpen(!mobileDrawerOpen)}
-              className="flex md:hidden text-[9px] uppercase tracking-widest font-sans font-medium px-2.5 py-1.5 bg-[#FAFAF2] border border-[#111111] text-[#111111] active:scale-95 cursor-pointer items-center gap-1"
-            >
-              <span>{mobileDrawerOpen ? 'Close' : 'Menu'}</span>
-              <ChevronRight className={`w-3 h-3 transition-transform ${mobileDrawerOpen ? 'rotate-90' : ''}`} />
-            </button>
           </div>
         </div>
 
-        {/* Real-time Scaled-Down Mini-Preview Pane */}
+        {/* Real-time Scaled Mini-Preview Pane */}
         <MiniPreview
           placedFlowers={placedFlowers}
-          placedStickers={placedStickers}
+          placedStickers={[]}
           wrapping={wrapping}
           ribbon={ribbon}
           ribbonColor={ribbonColor}
           ribbonTexture={ribbonTexture}
           ribbonText={ribbonText}
           ribbonTextColor={ribbonTextColor}
-          bouquetTitle={bouquetTitle}
-          recipientName={recipientName}
-          senderName={senderName}
+          bouquetTitle="Bespoke Arrangement"
+          recipientName=""
+          senderName=""
+          template={template}
+          anchorType={anchorType}
           onExportPNG={handleExportPNG}
           isExporting={isExportingImage}
         />
 
-        {/* Bouquet Composition Artboard Canvas (Target for PNG export) */}
+        {/* Bouquet Composition Artboard Canvas */}
         <div 
           ref={artboardRef}
-          onMouseMove={handleCanvasMouseMove}
+          onMouseMove={(e) => handleCanvasPointerMove(e.clientX, e.clientY)}
           onMouseUp={() => setDragTarget(null)}
-          onTouchMove={handleCanvasTouchMove}
+          onTouchMove={(e) => {
+            if (e.touches.length > 0) {
+              handleCanvasPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
           onTouchEnd={() => setDragTarget(null)}
-          className="relative w-full max-w-[380px] sm:max-w-[420px] aspect-[4/5] flex items-center justify-center my-auto bg-[#F9F9ED] rounded-xl overflow-hidden shadow-2xs select-none touch-none"
+          className="relative w-full max-w-[360px] sm:max-w-[400px] aspect-[4/5] flex items-center justify-center my-2 sm:my-auto bg-[#F9F9ED] rounded-xl overflow-hidden shadow-2xs select-none touch-none isolate z-10"
         >
-          {/* Subtle Background Artboard Watermark Pattern */}
+          {/* Background Watermark */}
           <div 
             className="absolute inset-0 opacity-[0.03] pointer-events-none" 
             style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }}
           />
 
-          {/* 1. Background Origami Parchment Wings (Back Layer, z-0) */}
-          <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 w-[74%] h-[64%] pointer-events-none z-0 filter drop-shadow-sm opacity-90">
-            <WrappingPaperSVG styleId={wrapping} layer="back" className="w-full h-full" />
-          </div>
+          {/* 1. BACK ANCHOR LAYER (Wrapping Back) */}
+          <CompositionAnchor
+            anchorType={anchorType}
+            wrappingStyle={wrapping}
+            ribbonStyle={ribbon}
+            ribbonColor={ribbonColor}
+            ribbonTexture={ribbonTexture}
+            ribbonText={ribbonText}
+            ribbonTextColor={ribbonTextColor}
+            layer="back"
+          />
 
-          {/* 2. Placed Botanical Flowers (Middle Layer, z-10 to z-40) */}
+          {/* 2. PLACED BOTANICAL BLOOMS (Stemless, overlapping) */}
           <div className="absolute inset-0 overflow-visible pointer-events-auto z-20">
             <AnimatePresence>
               {placedFlowers.map((pf) => {
@@ -1314,26 +679,28 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
                     className="pointer-events-none"
                   >
                     <motion.div 
-                      whileHover={{ scale: 1.04 }}
+                      whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.96 }}
                       onMouseDown={(e) => {
                         e.stopPropagation();
                         handleSelectFlower(pf.instanceId);
-                        setDragTarget({ type: 'flower', id: pf.instanceId });
+                        handleStartDrag(pf.instanceId, e.clientX, e.clientY);
                       }}
                       onTouchStart={(e) => {
                         e.stopPropagation();
                         handleSelectFlower(pf.instanceId);
-                        setDragTarget({ type: 'flower', id: pf.instanceId });
+                        if (e.touches.length > 0) {
+                          handleStartDrag(pf.instanceId, e.touches[0].clientX, e.touches[0].clientY);
+                        }
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleSelectFlower(pf.instanceId);
                       }}
-                      className={`w-28 h-36 sm:w-32 sm:h-40 relative cursor-grab active:cursor-grabbing pointer-events-auto transition-all ${
-                        isShowSquare ? 'ring-1 ring-[#111111]/60 bg-[#111111]/5 rounded-xl' : ''
+                      className={`w-28 h-28 sm:w-32 sm:h-32 relative cursor-grab active:cursor-grabbing pointer-events-auto transition-all ${
+                        isShowSquare ? 'ring-1 ring-[#111111]/70 bg-[#111111]/5 rounded-full' : ''
                       }`}
-                      title="Click or drag to position stem"
+                      title="Click or drag to position bloom"
                     >
                       {isShowSquare && (
                         <motion.button
@@ -1343,16 +710,18 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
                             e.stopPropagation();
                             handleRemoveFlower(pf.instanceId);
                           }}
-                          className="absolute -top-3 -right-3 w-6 h-6 bg-[#000000] text-[#F9F9ED] rounded-full flex items-center justify-center text-xs shadow-md z-50 hover:scale-110 transition-transform cursor-pointer pointer-events-auto"
-                          title="Delete stem"
+                          className="absolute -top-1 -right-1 w-6 h-6 bg-[#000000] text-[#F9F9ED] rounded-full flex items-center justify-center text-xs shadow-md z-50 hover:scale-110 transition-transform cursor-pointer pointer-events-auto"
+                          title="Delete bloom"
                         >
                           <X className="w-3.5 h-3.5" />
                         </motion.button>
                       )}
-                      <div className="absolute inset-0 pointer-events-auto">
+                      <div className="absolute inset-0 pointer-events-auto flex items-center justify-center">
                         <FlowerSVG 
+                          flowerId={flowerDef.id}
                           svgType={flowerDef.svgType} 
-                          color={flowerDef.color} 
+                          color={flowerDef.color}
+                          imageUrl={flowerDef.imageUrl}
                         />
                       </div>
                     </motion.div>
@@ -1362,118 +731,28 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
             </AnimatePresence>
           </div>
 
-          {/* 3. Front Tapered Wrapping Cone (z-45) & 4. Botanical Ribbon (z-50) */}
-          <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 z-45 flex flex-col items-center pointer-events-none w-[58%] h-[48%]">
-            {/* Front Tapered Origami Wrap Cone */}
-            <motion.div 
-              key={`wrap-${wrapping}`}
-              initial={{ scale: 0.96, opacity: 0.9 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className="w-full h-full relative"
-            >
-              <WrappingPaperSVG styleId={wrapping} layer="front" className="w-full h-full" />
-            </motion.div>
-
-            {/* Botanical Ribbon Tied Over Stem Neck */}
-            <motion.div 
-              key={`ribbon-${ribbon}-${ribbonColor}-${ribbonTexture}-${ribbonText}-${ribbonTextColor}`}
-              initial={{ scale: 0.85, opacity: 0, y: -4 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 400, damping: 22 }}
-              className="absolute top-[26%] left-1/2 -translate-x-1/2 w-[52%] h-[32%] pointer-events-auto z-50 filter drop-shadow-md cursor-pointer"
-              onClick={() => setActiveTab('ribbons')}
-              title={`Tied with ${currentTextureObj.name} ribbon • "${ribbonText || 'Click to personalize ribbon'}"`}
-            >
-              <RibbonSVG 
-                styleId={ribbon} 
-                color={ribbonColor}
-                texture={ribbonTexture}
-                customText={ribbonText}
-                textColor={ribbonTextColor}
-                className="w-full h-full" 
-              />
-            </motion.div>
-          </div>
-
-          {/* 5. Decorative Botanical Stickers Overlay Layer (z-55 to z-70) */}
-          <div className="absolute inset-0 overflow-visible pointer-events-auto z-55">
-            <AnimatePresence>
-              {placedStickers.map((ps) => {
-                const isShowSquare = ps.instanceId === visibleSquareId;
-
-                return (
-                  <motion.div
-                    key={ps.instanceId}
-                    initial={{ scale: 0, opacity: 0, rotate: ps.rotation }}
-                    animate={{ scale: ps.scale, opacity: 1, rotate: ps.rotation }}
-                    exit={{ scale: 0, opacity: 0, transition: { duration: 0.15 } }}
-                    transition={{ type: "spring", stiffness: 380, damping: 22 }}
-                    style={{
-                      position: 'absolute',
-                      left: `${ps.x}%`,
-                      top: `${ps.y}%`,
-                      transform: `translate(-50%, -50%)`,
-                      zIndex: ps.zIndex,
-                    }}
-                    className="pointer-events-none"
-                  >
-                    <motion.div 
-                      whileHover={{ scale: 1.08 }}
-                      whileTap={{ scale: 0.94 }}
-                      onMouseDown={(e) => {
-                        e.stopPropagation();
-                        handleSelectSticker(ps.instanceId);
-                        setDragTarget({ type: 'sticker', id: ps.instanceId });
-                      }}
-                      onTouchStart={(e) => {
-                        e.stopPropagation();
-                        handleSelectSticker(ps.instanceId);
-                        setDragTarget({ type: 'sticker', id: ps.instanceId });
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSelectSticker(ps.instanceId);
-                      }}
-                      className={`w-14 h-14 sm:w-16 sm:h-16 relative cursor-grab active:cursor-grabbing pointer-events-auto transition-all ${
-                        isShowSquare ? 'ring-1 ring-[#111111]/70 bg-white/30 rounded-xl backdrop-blur-2xs' : ''
-                      }`}
-                      title="Click & drag decorative botanical sticker"
-                    >
-                      {isShowSquare && (
-                        <motion.button
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveSticker(ps.instanceId);
-                          }}
-                          className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-[#000000] text-[#F9F9ED] rounded-full flex items-center justify-center text-xs shadow-md z-50 hover:scale-110 transition-transform cursor-pointer pointer-events-auto"
-                          title="Remove sticker"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </motion.button>
-                      )}
-                      <div className="absolute inset-0 pointer-events-auto">
-                        <StickerSVG stickerId={ps.stickerId} />
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
+          {/* 3. FRONT ANCHOR LAYER (Wrapping Cone Front) */}
+          <CompositionAnchor
+            anchorType={anchorType}
+            wrappingStyle={wrapping}
+            ribbonStyle={ribbon}
+            ribbonColor={ribbonColor}
+            ribbonTexture={ribbonTexture}
+            ribbonText={ribbonText}
+            ribbonTextColor={ribbonTextColor}
+            layer="front"
+          />
 
           {placedFlowers.length === 0 && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-[#111111]/5 rounded-2xl pointer-events-none z-10">
-              <p className="font-serif text-base opacity-60 mb-1 text-[#111111]">Canvas is empty</p>
-              <p className="text-[10px] font-sans opacity-40 uppercase tracking-widest text-[#6F6F6F]">Select stems from the library</p>
+              <p className="font-serif text-base opacity-60 mb-1 text-[#111111]">Artboard is empty</p>
+              <p className="text-[10px] font-sans opacity-40 uppercase tracking-widest text-[#6F6F6F]">Select blooms from the catalog</p>
             </div>
           )}
         </div>
 
-        {/* Seamlessly Integrated Editorial Bottom Control Bar */}
-        <div className="w-full max-w-lg bg-[#FAFAF2] border-t border-b sm:border border-[#D9D9CE] py-2.5 px-4 sm:px-8 flex items-center justify-between shadow-xs font-sans z-30 mt-auto">
+        {/* Desktop Bottom Control Bar (Hidden on Mobile since mobile has the natural bottom bar) */}
+        <div className="hidden md:flex w-full max-w-lg bg-[#FAFAF2] border border-[#D9D9CE] py-2.5 px-6 items-center justify-between shadow-xs font-sans z-30 mt-3">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleUndo}
@@ -1502,10 +781,10 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleReset}
-            disabled={placedFlowers.length === 0 && placedStickers.length === 0}
+            disabled={placedFlowers.length === 0}
             style={{ minWidth: '85px' }}
             className={`text-[10px] uppercase tracking-[0.2em] font-medium py-2 px-3 transition-all flex items-center justify-center border border-[#D9D9CE] ${
-              (placedFlowers.length > 0 || placedStickers.length > 0)
+              placedFlowers.length > 0 
                 ? 'bg-[#FAFAF2] text-[#111111] hover:border-[#111111] active:scale-95 cursor-pointer shadow-2xs' 
                 : 'bg-[#FAFAF2]/50 text-[#85857D] border-[#D9D9CE]/50 cursor-not-allowed opacity-50'
             }`}
@@ -1516,37 +795,33 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
 
       </main>
 
-      {/* Floating Desktop Hover Card (shows on hover for quick floriography glimpse) */}
+      {/* Floating Hover Card on Desktop */}
       <AnimatePresence>
-        {hoveredFlower && !inspectedFlower && activeTab === 'flowers' && (
+        {hoveredFlower && !inspectedFlower && (
           <motion.div
             initial={{ opacity: 0, x: -10, y: 10 }}
             animate={{ opacity: 1, x: 0, y: 0 }}
             exit={{ opacity: 0, x: -10 }}
             transition={{ duration: 0.15 }}
-            className="hidden lg:block fixed z-40 bottom-6 left-[340px] max-w-xs w-full pointer-events-none"
+            className="hidden lg:block fixed z-40 bottom-6 left-[390px] max-w-xs w-full pointer-events-none"
           >
             <div className="bg-[#FAFAF2] border border-[#111111] p-3.5 shadow-lg text-[#111111] font-sans">
               <div className="flex items-center justify-between border-b border-[#D9D9CE] pb-2 mb-2">
                 <div>
                   <span className="text-[8px] uppercase tracking-widest font-mono text-[#85857D]">
-                    {hoveredFlower.birthMonth ? `Birth Month: ${hoveredFlower.birthMonth}` : 'Botanical Stem'}
+                    {hoveredFlower.birthMonth ? `Month: ${hoveredFlower.birthMonth}` : 'Botanical Bloom'}
                   </span>
                   <h4 className="font-serif italic text-base text-[#111111] leading-tight">
                     {hoveredFlower.name}
                   </h4>
                 </div>
-                <div className="w-10 h-12 bg-transparent p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
-                  {hoveredFlower.imageUrl ? (
-                    <img 
-                      src={hoveredFlower.imageUrl} 
-                      alt={hoveredFlower.name} 
-                      className="w-full h-full object-contain mix-blend-multiply select-none" 
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <FlowerSVG svgType={hoveredFlower.svgType} color={hoveredFlower.color} />
-                  )}
+                <div className="w-12 h-12 bg-transparent p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                  <FlowerSVG 
+                    flowerId={hoveredFlower.id} 
+                    svgType={hoveredFlower.svgType} 
+                    color={hoveredFlower.color} 
+                    imageUrl={hoveredFlower.imageUrl} 
+                  />
                 </div>
               </div>
 
@@ -1571,7 +846,7 @@ export const BouquetBuilder: React.FC<BouquetBuilderProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Inspected Flower Full Personality Modal (Tapped / Clicked) */}
+      {/* Inspected Flower Full Lore Modal */}
       <AnimatePresence>
         {inspectedFlower && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">

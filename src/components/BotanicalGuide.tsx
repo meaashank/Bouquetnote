@@ -77,7 +77,12 @@ export const BotanicalGuide: React.FC<BotanicalGuideProps> = ({
               referrerPolicy="no-referrer"
             />
           ) : (
-            <FlowerSVG svgType={flowerOfTheDay.svgType} color={flowerOfTheDay.color} />
+            <FlowerSVG 
+              flowerId={flowerOfTheDay.id}
+              svgType={flowerOfTheDay.svgType} 
+              color={flowerOfTheDay.color} 
+              imageUrl={flowerOfTheDay.imageUrl}
+            />
           )}
         </div>
         <div className="flex-1 text-center md:text-left space-y-3">
@@ -196,8 +201,13 @@ export const BotanicalGuide: React.FC<BotanicalGuideProps> = ({
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-20 h-28">
-                    <FlowerSVG svgType={flower.svgType} color={flower.color} />
+                  <div className="w-20 h-28 flex items-center justify-center">
+                    <FlowerSVG 
+                      flowerId={flower.id}
+                      svgType={flower.svgType} 
+                      color={flower.color} 
+                      imageUrl={flower.imageUrl}
+                    />
                   </div>
                 )}
               </div>

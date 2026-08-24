@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { PlacedFlower, PlacedSticker, WrappingStyle, RibbonStyle, RibbonTexture } from '../types';
+import { PlacedFlower, PlacedSticker, WrappingStyle, RibbonStyle, RibbonTexture, CompositionTemplate, AnchorType } from '../types';
 import { FLOWERS, WRAPPING_OPTIONS, RIBBON_OPTIONS, RIBBON_TEXTURES } from '../data/flowers';
 import { FlowerSVG } from './FlowerSVG';
-import { RibbonSVG } from './RibbonSVG';
-import { WrappingPaperSVG } from './WrappingPaperSVG';
+import { CompositionAnchor } from './CompositionAnchor';
 import { StickerSVG } from './StickerSVG';
-import { Download, Sparkles, Eye, Maximize2, Minimize2, ChevronDown, ChevronUp, Image as ImageIcon } from 'lucide-react';
+import { Download, Eye, Maximize2, Minimize2, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface MiniPreviewProps {
@@ -20,6 +19,8 @@ interface MiniPreviewProps {
   bouquetTitle?: string;
   recipientName?: string;
   senderName?: string;
+  template?: CompositionTemplate;
+  anchorType?: AnchorType;
   onExportPNG: () => void;
   isExporting: boolean;
 }
@@ -36,6 +37,8 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
   bouquetTitle = 'Bespoke Arrangement',
   recipientName = '',
   senderName = '',
+  template = 'round',
+  anchorType = 'soft-wrap',
   onExportPNG,
   isExporting
 }) => {
@@ -43,13 +46,12 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
   const [isLargeSize, setIsLargeSize] = useState(false);
 
   const currentWrappingObj = WRAPPING_OPTIONS.find(w => w.id === wrapping) || WRAPPING_OPTIONS[0];
-  const currentRibbonObj = RIBBON_OPTIONS.find(r => r.id === ribbon) || RIBBON_OPTIONS[0];
   const currentTextureObj = RIBBON_TEXTURES.find(t => t.id === ribbonTexture) || RIBBON_TEXTURES[0];
 
   return (
     <aside 
       aria-label="Bouquet mini-preview"
-      className="absolute top-16 right-3 sm:right-6 z-30 font-sans pointer-events-auto select-none"
+      className="absolute top-16 right-3 sm:right-6 z-50 font-sans pointer-events-auto select-none"
     >
       <AnimatePresence mode="wait">
         {!isExpanded ? (
@@ -116,13 +118,13 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
               </div>
             </div>
 
-            {/* Rendered Live Miniature Bouquet Canvas (Clean Export Look) */}
+            {/* Rendered Live Miniature Bouquet Canvas */}
             <div 
               className={`relative overflow-hidden bg-[#F9F9ED] flex items-center justify-center p-2 border-b border-[#D9D9CE] transition-all duration-200 ${
                 isLargeSize ? 'h-52 sm:h-58' : 'h-40 sm:h-44'
               }`}
             >
-              {/* Subtle background radial dot pattern mimicking clean print paper */}
+              {/* Subtle background radial dot pattern */}
               <div 
                 className="absolute inset-0 opacity-[0.025] pointer-events-none" 
                 style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '16px 16px' }}
@@ -135,8 +137,8 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
 
               {placedFlowers.length === 0 ? (
                 <div className="text-center p-4">
-                  <p className="text-xs font-serif italic text-[#85857D] mb-1">Awaiting Stems</p>
-                  <p className="text-[8px] uppercase tracking-wider text-[#A0A096]">Pick flowers to preview</p>
+                  <p className="text-xs font-serif italic text-[#85857D] mb-1">Awaiting Blooms</p>
+                  <p className="text-[8px] uppercase tracking-wider text-[#A0A096]">Pick blooms to preview</p>
                 </div>
               ) : (
                 /* Miniature Composition Scale Frame */
@@ -145,12 +147,19 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
                     isLargeSize ? 'w-48 h-60' : 'w-36 h-45'
                   }`}
                 >
-                  {/* 1. Back Wrapping Wings */}
-                  <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 w-[74%] h-[64%] pointer-events-none z-0 opacity-90">
-                    <WrappingPaperSVG styleId={wrapping} layer="back" className="w-full h-full" />
-                  </div>
+                  {/* 1. Back Anchor */}
+                  <CompositionAnchor
+                    anchorType={anchorType}
+                    wrappingStyle={wrapping}
+                    ribbonStyle={ribbon}
+                    ribbonColor={ribbonColor}
+                    ribbonTexture={ribbonTexture}
+                    ribbonText={ribbonText}
+                    ribbonTextColor={ribbonTextColor}
+                    layer="back"
+                  />
 
-                  {/* 2. Placed Stems (Synchronized Clean Render) */}
+                  {/* 2. Placed Blooms */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                     {placedFlowers.map((pf) => {
                       const flowerDef = FLOWERS.find(f => f.id === pf.flowerId) || FLOWERS[0];
@@ -161,14 +170,16 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
                             position: 'absolute',
                             left: `${pf.x}%`,
                             top: `${pf.y}%`,
-                            transform: `translate(-50%, -50%) rotate(${pf.rotation}deg) scale(${pf.scale * 0.72})`,
+                            transform: `translate(-50%, -50%) rotate(${pf.rotation}deg) scale(${pf.scale * 0.65})`,
                             zIndex: pf.zIndex
                           }}
                         >
-                          <div className="w-20 h-26">
+                          <div className="w-16 h-16 flex items-center justify-center">
                             <FlowerSVG 
+                              flowerId={flowerDef.id}
                               svgType={flowerDef.svgType} 
                               color={flowerDef.color} 
+                              imageUrl={flowerDef.imageUrl}
                             />
                           </div>
                         </div>
@@ -176,25 +187,19 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
                     })}
                   </div>
 
-                  {/* 3. Front Wrapping Cone & 4. Personalized Botanical Ribbon */}
-                  <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none w-[58%] h-[48%]">
-                    <div className="w-full h-full relative">
-                      <WrappingPaperSVG styleId={wrapping} layer="front" className="w-full h-full" />
-                    </div>
+                  {/* 3. Front Anchor */}
+                  <CompositionAnchor
+                    anchorType={anchorType}
+                    wrappingStyle={wrapping}
+                    ribbonStyle={ribbon}
+                    ribbonColor={ribbonColor}
+                    ribbonTexture={ribbonTexture}
+                    ribbonText={ribbonText}
+                    ribbonTextColor={ribbonTextColor}
+                    layer="front"
+                  />
 
-                    <div className="absolute top-[26%] left-1/2 -translate-x-1/2 w-[52%] h-[32%] pointer-events-none z-30 filter drop-shadow-xs">
-                      <RibbonSVG 
-                        styleId={ribbon} 
-                        color={ribbonColor}
-                        texture={ribbonTexture}
-                        customText={ribbonText}
-                        textColor={ribbonTextColor}
-                        className="w-full h-full" 
-                      />
-                    </div>
-                  </div>
-
-                  {/* 5. Placed Stickers Overlay */}
+                  {/* 4. Placed Fauna Stickers Overlay */}
                   {placedStickers.length > 0 && (
                     <div className="absolute inset-0 pointer-events-none z-35">
                       {placedStickers.map((ps) => (
@@ -204,11 +209,11 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
                             position: 'absolute',
                             left: `${ps.x}%`,
                             top: `${ps.y}%`,
-                            transform: `translate(-50%, -50%) rotate(${ps.rotation}deg) scale(${ps.scale * 0.72})`,
+                            transform: `translate(-50%, -50%) rotate(${ps.rotation}deg) scale(${ps.scale * 0.65})`,
                             zIndex: ps.zIndex
                           }}
                         >
-                          <div className="w-10 h-10">
+                          <div className="w-8 h-8">
                             <StickerSVG stickerId={ps.stickerId} />
                           </div>
                         </div>
@@ -222,8 +227,8 @@ export const MiniPreview: React.FC<MiniPreviewProps> = ({
             {/* Footer Details & Instant Export */}
             <div className="p-2.5 space-y-2 bg-[#FAFAF2]">
               <div className="flex items-center justify-between text-[8px] uppercase tracking-wider text-[#6F6F6F]">
-                <span className="truncate max-w-[110px]" title={currentWrappingObj.name}>
-                  {currentWrappingObj.name}
+                <span className="truncate max-w-[110px]" title={anchorType}>
+                  {anchorType}
                 </span>
                 <span className="font-mono text-[#111111]">
                   {currentTextureObj.name}

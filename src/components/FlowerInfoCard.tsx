@@ -49,7 +49,12 @@ export const FlowerInfoCard: React.FC<FlowerInfoCardProps> = ({
               referrerPolicy="no-referrer"
             />
           ) : (
-            <FlowerSVG svgType={flower.svgType} color={flower.color} />
+            <FlowerSVG 
+              flowerId={flower.id}
+              svgType={flower.svgType} 
+              color={flower.color} 
+              imageUrl={flower.imageUrl}
+            />
           )}
         </div>
         <div className="flex-1 min-w-0 pr-4">

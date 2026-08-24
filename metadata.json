@@ -1,6 +1,6 @@
 {
-  "name": "Digibouquet",
-  "description": "An interactive digital flower-gifting atelier featuring 12 botanical stems, floriography meanings, birth months, customizable inscribed ribbons, ambient soundscapes, PNG exports, and a digital garden.",
+  "name": "DigiBouquet",
+  "description": "A focused digital flower-gifting atelier featuring botanical blooms, floriography lore, automatic composition, and personal gift notes.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

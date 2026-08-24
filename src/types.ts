@@ -1,4 +1,8 @@
 export type FlowerCategory = 'primary' | 'secondary' | 'accent' | 'filler' | 'foliage';
+export type FlowerRole = 'focal' | 'supporting' | 'accent' | 'foliage';
+
+export type CompositionTemplate = 'round' | 'wild' | 'minimal' | 'full' | 'vertical';
+export type AnchorType = 'soft-wrap' | 'vase-silhouette' | 'ribbon-tie' | 'folded-paper' | 'oval-shadow' | 'none';
 
 export type FlowerSvgType = 
   | 'rose' 
@@ -29,6 +33,7 @@ export interface Flower {
   name: string;
   botanicalName: string;
   category: FlowerCategory;
+  role: FlowerRole;
   color: string;
   svgType: FlowerSvgType;
   defaultScale: number;
@@ -50,12 +55,13 @@ export interface Flower {
 export interface PlacedFlower {
   instanceId: string;
   flowerId: string;
-  x: number;
-  y: number;
+  x: number; // Normalized percentage 0-100
+  y: number; // Normalized percentage 0-100
   rotation: number;
   scale: number;
   zIndex: number;
   flipX?: boolean;
+  role?: FlowerRole;
 }
 
 export type StickerId = 'butterfly-gold' | 'butterfly-azure' | 'honey-bee' | 'ladybug' | 'dragonfly' | 'pollen-sparkle';
@@ -101,6 +107,9 @@ export interface Bouquet {
   title: string;
   flowers: PlacedFlower[];
   stickers?: PlacedSticker[];
+  template?: CompositionTemplate;
+  anchorType?: AnchorType;
+  anchor?: AnchorType;
   wrapping: WrappingStyle;
   ribbon: RibbonStyle;
   ribbonColor?: string;
@@ -115,3 +124,4 @@ export interface Bouquet {
 }
 
 export type AppView = 'home' | 'builder' | 'garden' | 'view-bouquet' | 'botanical-guide';
+

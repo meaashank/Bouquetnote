@@ -1,10 +1,9 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Bouquet, AppView } from '../types';
 import { FlowerSVG } from './FlowerSVG';
-import { RibbonSVG } from './RibbonSVG';
-import { WrappingPaperSVG } from './WrappingPaperSVG';
+import { CompositionAnchor } from './CompositionAnchor';
 import { StickerSVG } from './StickerSVG';
-import { Trash2, Eye, Calendar, User, Download, Sparkles, Search, X, Tag } from 'lucide-react';
+import { Trash2, Eye, Calendar, User, Download, Search, X, Tag } from 'lucide-react';
 import { WRAPPING_OPTIONS, RIBBON_OPTIONS, RIBBON_TEXTURES, FLOWERS } from '../data/flowers';
 import { motion, AnimatePresence } from 'motion/react';
 import { toPng } from 'html-to-image';
@@ -133,12 +132,12 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
           </div>
         )}
 
-        {/* Empty State (No Bouquets at all) */}
+        {/* Empty State */}
         {bouquets.length === 0 && (
           <div className="text-center py-24 bg-[#FAFAF2] border border-[#D9D9CE] p-10 max-w-xl mx-auto my-12 shadow-xs">
             <h3 className="text-2xl font-normal italic mb-3 text-[#111111]">Your garden is empty</h3>
-            <p className="text-xs text-[#6F6F6F] font-sans uppercase tracking-wider mb-8 text-[#6F6F6F]">
-              No arrangements have been planted yet.
+            <p className="text-xs text-[#6F6F6F] font-sans uppercase tracking-wider mb-8">
+              No botanical arrangements have been planted yet.
             </p>
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -191,15 +190,22 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                   <div className="aspect-[4/3] relative flex items-center justify-center p-4 overflow-hidden bg-[#F5F5E9] border-b border-[#D9D9CE]">
                     <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
                     
-                    {/* Miniature Wrapped Cone & Ribbon Preview */}
+                    {/* Miniature Stemless Anchor & Blooms Preview */}
                     <div className="relative w-36 h-45 aspect-[4/5] flex items-center justify-center">
                       
-                      {/* 1. Back Origami Wings */}
-                      <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 w-[74%] h-[64%] pointer-events-none z-0 opacity-90">
-                        <WrappingPaperSVG styleId={bouquet.wrapping} layer="back" className="w-full h-full" />
-                      </div>
+                      {/* 1. Back Anchor */}
+                      <CompositionAnchor
+                        anchorType={bouquet.anchorType || 'soft-wrap'}
+                        wrappingStyle={bouquet.wrapping}
+                        ribbonStyle={bouquet.ribbon}
+                        ribbonColor={bouquet.ribbonColor}
+                        ribbonTexture={bouquet.ribbonTexture}
+                        ribbonText={bouquet.ribbonText}
+                        ribbonTextColor={bouquet.ribbonTextColor}
+                        layer="back"
+                      />
 
-                      {/* 2. Placed Stems */}
+                      {/* 2. Placed Blooms */}
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                         {bouquet.flowers.map((pf) => {
                           const flowerDef = FLOWERS.find(f => f.id === pf.flowerId) || FLOWERS[0];
@@ -210,14 +216,16 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                                 position: 'absolute',
                                 left: `${pf.x}%`,
                                 top: `${pf.y}%`,
-                                transform: `translate(-50%, -50%) rotate(${pf.rotation}deg) scale(${pf.scale * 0.72})`,
+                                transform: `translate(-50%, -50%) rotate(${pf.rotation}deg) scale(${pf.scale * 0.65})`,
                                 zIndex: pf.zIndex
                               }}
                             >
-                              <div className="w-20 h-26">
+                              <div className="w-16 h-16 flex items-center justify-center">
                                 <FlowerSVG 
+                                  flowerId={flowerDef.id}
                                   svgType={flowerDef.svgType} 
                                   color={flowerDef.color} 
+                                  imageUrl={flowerDef.imageUrl}
                                 />
                               </div>
                             </div>
@@ -225,25 +233,19 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                         })}
                       </div>
 
-                      {/* 3. Front Tapered Wrap Cone & 4. Ribbon */}
-                      <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none w-[58%] h-[48%]">
-                        <div className="w-full h-full relative">
-                          <WrappingPaperSVG styleId={bouquet.wrapping} layer="front" className="w-full h-full" />
-                        </div>
+                      {/* 3. Front Anchor */}
+                      <CompositionAnchor
+                        anchorType={bouquet.anchorType || 'soft-wrap'}
+                        wrappingStyle={bouquet.wrapping}
+                        ribbonStyle={bouquet.ribbon}
+                        ribbonColor={bouquet.ribbonColor}
+                        ribbonTexture={bouquet.ribbonTexture}
+                        ribbonText={bouquet.ribbonText}
+                        ribbonTextColor={bouquet.ribbonTextColor}
+                        layer="front"
+                      />
 
-                        <div className="absolute top-[26%] left-1/2 -translate-x-1/2 w-[52%] h-[32%] pointer-events-none z-30 filter drop-shadow-xs">
-                          <RibbonSVG 
-                            styleId={bouquet.ribbon || 'raw-silk'} 
-                            color={bouquet.ribbonColor}
-                            texture={bouquet.ribbonTexture}
-                            customText={bouquet.ribbonText}
-                            textColor={bouquet.ribbonTextColor}
-                            className="w-full h-full" 
-                          />
-                        </div>
-                      </div>
-
-                      {/* 5. Decorative Stickers Overlay */}
+                      {/* 4. Decorative Stickers Overlay */}
                       {stickers.length > 0 && (
                         <div className="absolute inset-0 pointer-events-none z-35">
                           {stickers.map((ps) => (
@@ -253,11 +255,11 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                                 position: 'absolute',
                                 left: `${ps.x}%`,
                                 top: `${ps.y}%`,
-                                transform: `translate(-50%, -50%) rotate(${ps.rotation}deg) scale(${ps.scale * 0.72})`,
+                                transform: `translate(-50%, -50%) rotate(${ps.rotation}deg) scale(${ps.scale * 0.65})`,
                                 zIndex: ps.zIndex
                               }}
                             >
-                              <div className="w-10 h-10">
+                              <div className="w-8 h-8">
                                 <StickerSVG stickerId={ps.stickerId} />
                               </div>
                             </div>
@@ -268,13 +270,13 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
 
                     {/* Stem Count & Ribbon Badge */}
                     <div className="absolute top-4 right-4 bg-[#FAFAF2] px-2.5 py-1 text-[9px] font-sans uppercase tracking-widest text-[#6F6F6F] border border-[#D9D9CE] shadow-2xs flex items-center gap-1.5">
-                      <span>{bouquet.flowers.length} stems</span>
+                      <span>{bouquet.flowers.length} blooms</span>
                       <span>•</span>
                       <span>{textureObj ? textureObj.name : ribbonObj.material}</span>
                       {stickers.length > 0 && (
                         <>
                           <span>•</span>
-                          <span>{stickers.length} stickers</span>
+                          <span>{stickers.length} fauna</span>
                         </>
                       )}
                     </div>
@@ -300,7 +302,7 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                         <span>For {bouquet.recipientName} • From {bouquet.senderName}</span>
                       </p>
 
-                      {/* Inscribed Ribbon Ribbon Text Badge if present */}
+                      {/* Inscribed Ribbon Text Badge if present */}
                       {bouquet.ribbonText && (
                         <div className="flex items-center gap-1.5 text-[9px] font-serif italic text-[#85857D] pt-1">
                           <Tag className="w-2.5 h-2.5 text-amber-700/80" />
@@ -379,12 +381,19 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
 
                 {/* Botanical Bouquet Display in Modal */}
                 <div className="relative w-full max-w-[340px] aspect-[4/5] mx-auto flex items-center justify-center">
-                  {/* 1. Back Origami Wings */}
-                  <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 w-[74%] h-[64%] pointer-events-none z-0 opacity-90">
-                    <WrappingPaperSVG styleId={selectedBouquet.wrapping} layer="back" className="w-full h-full" />
-                  </div>
+                  {/* 1. Back Anchor */}
+                  <CompositionAnchor
+                    anchorType={selectedBouquet.anchorType || 'soft-wrap'}
+                    wrappingStyle={selectedBouquet.wrapping}
+                    ribbonStyle={selectedBouquet.ribbon}
+                    ribbonColor={selectedBouquet.ribbonColor}
+                    ribbonTexture={selectedBouquet.ribbonTexture}
+                    ribbonText={selectedBouquet.ribbonText}
+                    ribbonTextColor={selectedBouquet.ribbonTextColor}
+                    layer="back"
+                  />
 
-                  {/* 2. Placed Flowers */}
+                  {/* 2. Placed Blooms */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
                     {selectedBouquet.flowers.map((pf) => {
                       const flowerDef = FLOWERS.find(f => f.id === pf.flowerId) || FLOWERS[0];
@@ -399,10 +408,12 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                             zIndex: pf.zIndex
                           }}
                         >
-                          <div className="w-24 h-30">
+                          <div className="w-20 h-20 flex items-center justify-center">
                             <FlowerSVG 
+                              flowerId={flowerDef.id}
                               svgType={flowerDef.svgType} 
                               color={flowerDef.color} 
+                              imageUrl={flowerDef.imageUrl}
                             />
                           </div>
                         </div>
@@ -410,25 +421,19 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                     })}
                   </div>
 
-                  {/* 3. Front Wrapping Cone & 4. Ribbon */}
-                  <div className="absolute bottom-[2%] left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none w-[58%] h-[48%]">
-                    <div className="w-full h-full relative">
-                      <WrappingPaperSVG styleId={selectedBouquet.wrapping} layer="front" className="w-full h-full" />
-                    </div>
+                  {/* 3. Front Anchor */}
+                  <CompositionAnchor
+                    anchorType={selectedBouquet.anchorType || 'soft-wrap'}
+                    wrappingStyle={selectedBouquet.wrapping}
+                    ribbonStyle={selectedBouquet.ribbon}
+                    ribbonColor={selectedBouquet.ribbonColor}
+                    ribbonTexture={selectedBouquet.ribbonTexture}
+                    ribbonText={selectedBouquet.ribbonText}
+                    ribbonTextColor={selectedBouquet.ribbonTextColor}
+                    layer="front"
+                  />
 
-                    <div className="absolute top-[26%] left-1/2 -translate-x-1/2 w-[52%] h-[32%] pointer-events-auto z-30 filter drop-shadow-md">
-                      <RibbonSVG 
-                        styleId={selectedBouquet.ribbon || 'raw-silk'} 
-                        color={selectedBouquet.ribbonColor}
-                        texture={selectedBouquet.ribbonTexture}
-                        customText={selectedBouquet.ribbonText}
-                        textColor={selectedBouquet.ribbonTextColor}
-                        className="w-full h-full" 
-                      />
-                    </div>
-                  </div>
-
-                  {/* 5. Placed Botanical Stickers */}
+                  {/* 4. Placed Botanical Fauna Stickers */}
                   {selectedBouquet.stickers && selectedBouquet.stickers.length > 0 && (
                     <div className="absolute inset-0 pointer-events-none z-35">
                       {selectedBouquet.stickers.map((ps) => (
@@ -442,7 +447,7 @@ export const Garden: React.FC<GardenProps> = ({ bouquets, setCurrentView, onDele
                             zIndex: ps.zIndex
                           }}
                         >
-                          <div className="w-12 h-12">
+                          <div className="w-10 h-10">
                             <StickerSVG stickerId={ps.stickerId} />
                           </div>
                         </div>
